@@ -1,5 +1,6 @@
 import express from "express";
 import { calcaulateFare } from "../controllers/fareController";
+import { authenticateUser } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
@@ -55,6 +56,6 @@ const router = express.Router();
  *       500:
  *         description: Server error
  */
-router.post("/calculate", calcaulateFare);
+router.post("/calculate", authenticateUser, calcaulateFare);
 
 export default router;
