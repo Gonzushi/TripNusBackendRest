@@ -5,25 +5,23 @@
   "engines": {
     "node": ">=22.0.0 <23.0.0"
   },
-"scripts": {
-  "dev": "ts-node-dev --respawn src/index.ts",
-  "clean": "rm -rf dist",
-  "build": "npm run clean && tsc",
-  "start": "pm2 start dist/index.js --name TripNusBackend -i max || pm2 reload TripNusBackend",
-  "stop": "pm2 stop TripNusBackend",
-  
-  "docker-build": "docker build -t tripnus-backend -f Dockerfile.prod .",
-  "docker-start": "docker run -p 3000:3000 --env-file .env tripnus-backend",
-  "docker-stop": "docker ps -q --filter ancestor=tripnus-backend | xargs -r docker stop",
-  "docker-rm": "docker ps -a -q --filter ancestor=tripnus-backend | xargs -r docker rm",
-  "docker-delete": "npm run docker-stop && npm run docker-rm && docker rmi -f tripnus-backend",
-  "docker-content": "docker run --rm -it tripnus-backend sh",
-  "docker-logs": "docker logs tripnus-backend",
-  "docker-tag": "docker tag tripnus-backend:latest hendrywidyanto/tripnus-backend:latest",
-  "docker-push": "docker push hendrywidyanto/tripnus-backend:latest",
-  
-  "zip": "zip -r zTripNusBackend.zip . -x 'node_modules/**' -x 'dist/**'"
-},
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
+    "start": "pm2 start dist/index.js --name TripNusBackend -i max || pm2 reload TripNusBackend",
+    "stop": "pm2 stop TripNusBackend",
+    "docker-build": "docker build -t tripnus-backend -f Dockerfile.prod .",
+    "docker-start": "docker run -p 3000:3000 --env-file .env tripnus-backend",
+    "docker-stop": "docker ps -q --filter ancestor=tripnus-backend | xargs -r docker stop",
+    "docker-rm": "docker ps -a -q --filter ancestor=tripnus-backend | xargs -r docker rm",
+    "docker-delete": "npm run docker-stop && npm run docker-rm && docker rmi -f tripnus-backend",
+    "docker-content": "docker run --rm -it tripnus-backend sh",
+    "docker-logs": "docker logs tripnus-backend",
+    "docker-tag": "docker tag tripnus-backend:latest hendrywidyanto/tripnus-backend:latest",
+    "docker-push": "docker push hendrywidyanto/tripnus-backend:latest",
+    "zip": "zip -r zTripNusBackend.zip . -x 'node_modules/**' -x 'dist/**'"
+  },
   "repository": {
     "type": "git",
     "url": "git@github.com-hendry-personal:Gonzushi/TripNusBackend.git"
@@ -34,6 +32,7 @@
   "description": "",
   "dependencies": {
     "@supabase/supabase-js": "^2.49.6",
+    "axios": "^1.9.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",

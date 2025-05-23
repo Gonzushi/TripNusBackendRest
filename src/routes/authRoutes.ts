@@ -89,8 +89,10 @@ router.post("/resend-activation", resendActivation);
  *               email:
  *                 type: string
  *                 format: email
+ *                 example: hendrywidyanto97@gmail.com
  *               password:
  *                 type: string
+ *                 example: Password123456789!
  *     responses:
  *       200:
  *         description: Login successful
