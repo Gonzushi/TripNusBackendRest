@@ -27,7 +27,7 @@ jobs:
       - name: Push Docker image
         run: |
           docker push hendrywidyanto/tripnus-backend-rest:latest
-          docker push hendrywidyanto/tripnus-backend-rest:${{ env.SHORT_SHA }}
+          # docker push hendrywidyanto/tripnus-backend-rest:${{ env.SHORT_SHA }}
 
       - name: Trigger Render Deploy
         run: |
