@@ -4,7 +4,6 @@ import {
   refundGoPayPayment,
   handleMidtransWebhook,
 } from "../controllers/paymentController";
-import { authenticateUser } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
@@ -51,7 +50,7 @@ const router = express.Router();
  *       500:
  *         description: Payment initiation failed
  */
-router.post("/gopay", authenticateUser, createGoPayPayment);
+router.post("/gopay", createGoPayPayment);
 
 /**
  * @swagger
@@ -100,7 +99,7 @@ router.post("/gopay", authenticateUser, createGoPayPayment);
  *       500:
  *         description: Refund failed
  */
-router.post("/refund", authenticateUser, refundGoPayPayment);
+router.post("/refund", refundGoPayPayment);
 
 /**
  * @swagger
@@ -126,6 +125,6 @@ router.post("/refund", authenticateUser, refundGoPayPayment);
  *               type: string
  *               example: "OK"
  */
-router.post("/midtrans-webhook", authenticateUser, handleMidtransWebhook);
+router.post("/midtrans-webhook", handleMidtransWebhook);
 
 export default router;

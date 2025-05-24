@@ -1,5 +1,5 @@
 {
-  "name": "tripnus-backend",
+  "name": "tripnus-backend-rest",
   "version": "1.0.0",
   "main": "index.js",
   "engines": {
@@ -20,7 +20,7 @@
     "docker-logs": "docker logs tripnus-backend",
     "docker-tag": "docker tag tripnus-backend:latest hendrywidyanto/tripnus-backend:latest",
     "docker-push": "docker push hendrywidyanto/tripnus-backend:latest",
-    "zip": "zip -r zTripNusBackend.zip . -x 'node_modules/**' -x 'dist/**'"
+    "zip": "zip -r zTripNusBackendRest.zip . -x 'node_modules/**' -x 'dist/**'"
   },
   "repository": {
     "type": "git",

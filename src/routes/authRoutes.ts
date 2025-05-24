@@ -8,7 +8,7 @@ import {
   changePassword,
 } from "../controllers/authController";
 
-import { authenticateUser } from "../middlewares/authMiddleware";
+import { authenticateUser } from "../middlewares/authHandler";
 
 const router = express.Router();
 

@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 const JWT_SECRET = process.env.SUPABASE_JWT_SECRET!;
 
 interface DecodedToken {
-  sub: string; 
+  sub: string;
   email: string;
   [key: string]: any;
 }
