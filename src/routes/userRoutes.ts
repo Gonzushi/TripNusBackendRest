@@ -119,7 +119,6 @@ const router = express.Router();
  *                   type: string
  *                   example: INTERNAL_ERROR
  */
-
 router.put("/profile", updateProfile);
 
 export default router;
