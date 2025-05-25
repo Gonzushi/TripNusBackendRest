@@ -1,26 +1,26 @@
-import swaggerJSDoc from 'swagger-jsdoc';
-import swaggerUi from 'swagger-ui-express';
-import { Express } from 'express';
-import path from 'path';
+import swaggerJSDoc from "swagger-jsdoc";
+import swaggerUi from "swagger-ui-express";
+import { Express } from "express";
+import path from "path";
 
-
-const apiPath = process.env.NODE_ENV === 'production'
-  ? path.join(__dirname, 'routes/*.js') 
-  : path.join(__dirname, '../src/routes/*.ts');
+const apiPath =
+  process.env.NODE_ENV === "production"
+    ? path.join(__dirname, "routes/*.js")
+    : path.join(__dirname, "../src/routes/*.ts");
 
 const options = {
   definition: {
-    openapi: '3.0.0',
+    openapi: "3.0.0",
     info: {
-      title: 'TripNusBackend',
-      version: '1.0.0',
+      title: "TripNus Backend API",
+      version: "1.0.0",
     },
     components: {
       securitySchemes: {
         bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
         },
       },
     },
@@ -30,12 +30,11 @@ const options = {
       },
     ],
   },
-  apis: [apiPath], 
+  apis: [apiPath],
 };
-
 
 const swaggerSpec = swaggerJSDoc(options);
 
 export const setupSwagger = (app: Express) => {
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 };

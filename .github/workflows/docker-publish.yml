@@ -20,9 +20,18 @@ jobs:
         id: vars
         run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
 
+      - name: Get build time
+        id: buildtime
+        run: echo "BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+
       - name: Build Docker image
         run: |
-          docker build -t hendrywidyanto/tripnus-backend-rest:latest -t hendrywidyanto/tripnus-backend-rest:${{ env.SHORT_SHA }} -f Dockerfile.prod .
+          docker build \
+            --build-arg GIT_COMMIT=${{ env.SHORT_SHA }} \
+            --build-arg BUILD_TIME=${{ env.BUILD_TIME }} \
+            -t hendrywidyanto/tripnus-backend-rest:latest \
+            -t hendrywidyanto/tripnus-backend-rest:${{ env.SHORT_SHA }} \
+            -f Dockerfile.prod .
 
       - name: Push Docker image
         run: |

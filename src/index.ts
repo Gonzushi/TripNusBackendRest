@@ -13,6 +13,7 @@ import {
 
 import authRoutes from "./routes/authRoutes";
 import fareRoutes from "./routes/fareRoutes";
+import healthRoutes from "./routes/healthRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
 import userRoutes from "./routes/userRoutes";
 
@@ -23,6 +24,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use("/", healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/fare", authenticateUser, fareRoutes);
 app.use("/payment", authenticateUser, paymentRoutes);
