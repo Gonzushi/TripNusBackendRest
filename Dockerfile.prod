@@ -26,4 +26,4 @@ EXPOSE 3000
 
 ENV NODE_ENV=production
 
-CMD ["pm2-runtime", "start", "dist/index.js", "--name", "TripNusBackend", "-i", "max"]
+CMD ["pm2-runtime", "start", "dist/index.js", "--name", "TripNusBackendRest", "-i", "max"]

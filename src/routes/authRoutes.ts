@@ -3,9 +3,11 @@ import {
   register,
   resendActivation,
   login,
+  refreshToken,
   logout,
   resetPasswordForEmail,
   changePassword,
+  jwtChecker,
 } from "../controllers/authController";
 
 import { authenticateUser } from "../middlewares/authHandler";
@@ -32,13 +34,102 @@ const router = express.Router();
  *               email:
  *                 type: string
  *                 format: email
+ *                 example: hendrywidyanto97@gmail.com
  *               password:
  *                 type: string
+ *                 example: Password123456789!
  *     responses:
  *       201:
- *         description: User created successfully
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: User registered successfully. Please check your email to activate your account.
+ *                 code:
+ *                   type: string
+ *                   example: USER_REGISTERED
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: abc123
+ *                         email:
+ *                           type: string
+ *                           example: hendrywidyanto97@gmail.com
  *       400:
- *         description: Registration error
+ *         description: Registration failed due to invalid input or other client error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: User registration failed
+ *                 message:
+ *                   type: string
+ *                   example: Could not register user. Please verify your email and try again.
+ *                 code:
+ *                   type: string
+ *                   example: SIGN_UP_ERROR
+ *                 details:
+ *                   type: string
+ *                   example: Password must be at least 8 characters.
+ *       409:
+ *         description: Email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 409
+ *                 error:
+ *                   type: string
+ *                   example: Email already in use
+ *                 message:
+ *                   type: string
+ *                   example: This email is already registered. Please log in or reset your password.
+ *                 code:
+ *                   type: string
+ *                   example: USER_ALREADY_EXISTS
+ *       500:
+ *         description: Internal server error (e.g. database failure)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Database query failed
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while checking for existing users.
+ *                 code:
+ *                   type: string
+ *                   example: DB_QUERY_ERROR
+ *                 details:
+ *                   type: string
+ *                   example: Database timeout or connection error
  */
 router.post("/register", register);
 
@@ -61,11 +152,63 @@ router.post("/register", register);
  *               email:
  *                 type: string
  *                 format: email
+ *                 example: hendrywidyanto97@gmail.com
  *     responses:
  *       200:
- *         description: Activation email resent
+ *         description: Activation email resent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Activation email resent successfully.
+ *                 code:
+ *                   type: string
+ *                   example: ACTIVATION_EMAIL_RESENT
+ *                 data:
+ *                   type: object
  *       400:
- *         description: Resend error
+ *         description: Missing or invalid email / resend failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     status:
+ *                       type: integer
+ *                       example: 400
+ *                     error:
+ *                       type: string
+ *                       example: Missing email
+ *                     message:
+ *                       type: string
+ *                       example: Email is required to resend activation.
+ *                     code:
+ *                       type: string
+ *                       example: EMAIL_REQUIRED
+ *                 - type: object
+ *                   properties:
+ *                     status:
+ *                       type: integer
+ *                       example: 400
+ *                     error:
+ *                       type: string
+ *                       example: Resend failed
+ *                     message:
+ *                       type: string
+ *                       example: Could not resend activation email. Please check the email address.
+ *                     code:
+ *                       type: string
+ *                       example: RESEND_FAILED
+ *                     details:
+ *                       type: string
+ *                       example: User not found or email already confirmed
  */
 router.post("/resend-activation", resendActivation);
 
@@ -96,33 +239,264 @@ router.post("/resend-activation", resendActivation);
  *     responses:
  *       200:
  *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Login successful.
+ *                 code:
+ *                   type: string
+ *                   example: LOGIN_SUCCESS
+ *                 data:
+ *                   type: object
+ *                   description: User authentication data
  *       401:
  *         description: Invalid credentials
- *       403:
- *         description: Email not verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Authentication failed
+ *                 message:
+ *                   type: string
+ *                   example: Invalid email or password.
+ *                 code:
+ *                   type: string
+ *                   example: AUTH_FAILED
+ *                 details:
+ *                   type: string
+ *                   example: Wrong password or user does not exist.
  */
 router.post("/login", login);
 
 /**
  * @swagger
+ * /auth/refresh-token:
+ *   post:
+ *     summary: Refresh access token using a valid refresh token
+ *     tags: [Auth]
+ *     security: []   # no auth required
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: The refresh token obtained during login
+ *                 example: 2mnkjrcs2dki
+ *     responses:
+ *       200:
+ *         description: Access token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Access token refreshed successfully
+ *                 code:
+ *                   type: string
+ *                   example: REFRESH_SUCCESS
+ *                 data:
+ *                   type: object
+ *                   description: Token refresh data returned from Supabase
+ *                   properties:
+ *                     access_token:
+ *                       type: string
+ *                       description: New access token
+ *                     refresh_token:
+ *                       type: string
+ *                       description: New refresh token
+ *                     expires_in:
+ *                       type: integer
+ *                       description: Access token expiry time in seconds
+ *                     token_type:
+ *                       type: string
+ *                       example: bearer
+ *       400:
+ *         description: Missing refresh token in request body
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: Bad Request
+ *                 message:
+ *                   type: string
+ *                   example: Refresh token is required
+ *                 code:
+ *                   type: string
+ *                   example: REFRESH_TOKEN_REQUIRED
+ *       401:
+ *         description: Invalid or expired refresh token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: Invalid or expired refresh token
+ *                 code:
+ *                   type: string
+ *                   example: INVALID_REFRESH_TOKEN
+ *       500:
+ *         description: Server error during token refresh
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred during token refresh.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ */
+router.post("/refresh-token", refreshToken);
+
+/**
+ * @swagger
  * /auth/logout:
  *   post:
- *     summary: Log out the current user
+ *     summary: Log out the current user and revoke their session
  *     tags: [Auth]
- *     security: []
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               scope:
+ *                 type: string
+ *                 description: Scope of the logout. One of 'local', 'global', or 'others'. Defaults to 'local'.
+ *                 enum: [local, global, others]
+ *                 example: local
  *     responses:
  *       200:
  *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Logged out successfully. Your session has been revoked (local scope).
+ *                 code:
+ *                   type: string
+ *                   example: LOGOUT_SUCCESS
  *       400:
- *         description: Logout error
+ *         description: Logout failed due to invalid token or Supabase error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: Logout failed
+ *                 message:
+ *                   type: string
+ *                   example: Invalid or expired token
+ *                 code:
+ *                   type: string
+ *                   example: LOGOUT_FAILED
+ *       401:
+ *         description: Missing or invalid authorization header
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: Authorization header missing or invalid
+ *                 code:
+ *                   type: string
+ *                   example: AUTH_HEADER_MISSING
+ *       500:
+ *         description: Server error during logout
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred during logout.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
  */
-router.post("/logout", logout);
+router.post("/logout", authenticateUser, logout);
 
 /**
  * @swagger
  * /auth/reset-password-for-email:
  *   post:
  *     summary: Send password reset email
+ *     description: Sends a password reset email if the email exists in the system. You will only receive the email if the account is registered.
  *     tags: [Auth]
  *     security: []
  *     requestBody:
@@ -137,11 +511,45 @@ router.post("/logout", logout);
  *               email:
  *                 type: string
  *                 format: email
+ *                 example: hendrywidyanto97@gmail.com
  *     responses:
  *       200:
- *         description: Password reset email sent
+ *         description: Password reset email sent (if the email exists)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                 message:
+ *                   type: string
+ *                 code:
+ *                   type: string
+ *             example:
+ *               status: 200
+ *               message: If the email exists, a password reset link has been sent.
+ *               code: RESET_EMAIL_SENT
  *       400:
- *         description: Reset error
+ *         description: Reset error (e.g., invalid email format or Supabase error)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 code:
+ *                   type: string
+ *             example:
+ *               status: 400
+ *               error: Bad Request
+ *               message: Invalid email format or internal error
+ *               code: RESET_EMAIL_FAILED
  */
 router.post("/reset-password-for-email", resetPasswordForEmail);
 
@@ -167,7 +575,7 @@ router.post("/reset-password-for-email", resetPasswordForEmail);
  *             properties:
  *               password:
  *                 type: string
- *                 example: newStrongPassword123!
+ *                 example: Password123456789!
  *     responses:
  *       200:
  *         description: Password updated successfully
@@ -176,9 +584,15 @@ router.post("/reset-password-for-email", resetPasswordForEmail);
  *             schema:
  *               type: object
  *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
  *                 message:
  *                   type: string
  *                   example: Password updated successfully
+ *                 code:
+ *                   type: string
+ *                   example: PASSWORD_UPDATED
  *       400:
  *         description: Invalid input or update error
  *         content:
@@ -186,9 +600,18 @@ router.post("/reset-password-for-email", resetPasswordForEmail);
  *             schema:
  *               type: object
  *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
  *                 error:
  *                   type: string
- *                   example: Password is required
+ *                   example: Bad Request
+ *                 message:
+ *                   type: string
+ *                   example: Password is required and must be a string.
+ *                 code:
+ *                   type: string
+ *                   example: PASSWORD_REQUIRED
  *       401:
  *         description: Unauthorized, missing or invalid token
  *         content:
@@ -196,17 +619,45 @@ router.post("/reset-password-for-email", resetPasswordForEmail);
  *             schema:
  *               type: object
  *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
  *                 error:
  *                   type: string
- *                   example: Missing or invalid Authorization header
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: User ID not found in request context.
+ *                 code:
+ *                   type: string
+ *                   example: USER_NOT_FOUND
+ *       500:
+ *         description: Server error during password update
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while updating the password.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
  */
 router.post("/change-password", authenticateUser, changePassword);
 
 /**
  * @swagger
- * /auth/profile:
+ * /auth/jwt-checker:
  *   get:
- *     summary: Get current user's profile
+ *     summary: To check that JWT decoder is working properly, this endpoint returns the user profile from the JWT token.
  *     tags:
  *       - Auth
  *     security:
@@ -219,7 +670,16 @@ router.post("/change-password", authenticateUser, changePassword);
  *             schema:
  *               type: object
  *               properties:
- *                 user:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: User profile retrieved successfully
+ *                 code:
+ *                   type: string
+ *                   example: PROFILE_RETRIEVED
+ *                 data:
  *                   type: object
  *                   properties:
  *                     sub:
@@ -230,9 +690,25 @@ router.post("/change-password", authenticateUser, changePassword);
  *                       example: "user@example.com"
  *       401:
  *         description: Missing or invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: Missing or invalid token
+ *                 code:
+ *                   type: string
+ *                   example: AUTH_HEADER_MISSING
  */
-router.get("/profile", authenticateUser, (req, res) => {
-  res.json({ user: req.user });
-});
+
+router.get("/jwt-checker", authenticateUser, jwtChecker);
 
 export default router;

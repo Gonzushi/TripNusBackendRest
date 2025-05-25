@@ -8,7 +8,7 @@ npm-debug.log*
 .vscode
 .idea
 *.tsbuildinfo
-/zTripNusBackend.zip
+/zTripNusBackendRest.zip
 
 # Folders to ignore
 node_modules
