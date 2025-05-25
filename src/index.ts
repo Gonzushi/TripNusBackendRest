@@ -14,6 +14,7 @@ import {
 import authRoutes from "./routes/authRoutes";
 import fareRoutes from "./routes/fareRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
+import userRoutes from "./routes/userRoutes";
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/fare", authenticateUser, fareRoutes);
 app.use("/payment", authenticateUser, paymentRoutes);
+app.use("/user", authenticateUser, userRoutes);
 
 // Swagger
 setupSwagger(app);

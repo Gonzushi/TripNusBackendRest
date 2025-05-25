@@ -1,22 +1,8 @@
 import { Request, Response, NextFunction } from "express";
+import { DecodedToken } from "../types/auth";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.SUPABASE_JWT_SECRET!;
-
-interface DecodedToken {
-  sub: string;
-  email: string;
-  [key: string]: any;
-}
-
-// Extend Express's Request type to include `user`
-declare global {
-  namespace Express {
-    interface Request {
-      user?: DecodedToken;
-    }
-  }
-}
 
 export const authenticateUser = (
   req: Request,
@@ -39,8 +25,7 @@ export const authenticateUser = (
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
-    req.user = decoded; 
-    console.log(decoded)
+    req.user = decoded;
     next();
   } catch (err) {
     res.status(401).json({
