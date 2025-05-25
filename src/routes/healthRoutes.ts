@@ -117,7 +117,10 @@ router.get("/", async (_req: Request, res: Response) => {
         : undefined,
   };
 
-  res.json(response);
+  const prettyJson = JSON.stringify(response, null, 2);
+
+  res.setHeader("Content-Type", "application/json");
+  res.send(prettyJson);
 });
 
 export default router;
