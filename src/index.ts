@@ -16,6 +16,7 @@ import fareRoutes from "./routes/fareRoutes";
 import healthRoutes from "./routes/healthRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
 import userRoutes from "./routes/userRoutes";
+import riderRoutes from "./routes/riderRoutes";
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/auth", authRoutes);
 app.use("/fare", authenticateUser, fareRoutes);
 app.use("/payment", authenticateUser, paymentRoutes);
 app.use("/user", authenticateUser, userRoutes);
+app.use("/rider", authenticateUser, riderRoutes);
 
 // Swagger
 setupSwagger(app);

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import supabase from "../supabaseClient";
+import supabase, { supabaseAnon } from "../supabaseClient";
 
 // Register a new user
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -111,27 +111,62 @@ export const resendActivation = async (
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  // 1. Authenticate user with email and password
+  const { data: authData, error: authError } =
+    await supabaseAnon.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (error) {
+  await supabaseAnon.auth.signOut();
+
+  if (authError) {
     res.status(401).json({
       status: 401,
       error: "Authentication failed",
       message: "Invalid email or password.",
       code: "AUTH_FAILED",
-      details: error.message,
+      details: authError.message,
     });
     return;
   }
 
+  // 2. Get authId from authenticated user
+  const authId = authData.user?.id;
+
+  if (!authId) {
+    res.status(401).json({
+      status: 401,
+      error: "Authentication failed",
+      message: "Authenticated user ID not found.",
+      code: "AUTH_ID_NOT_FOUND",
+    });
+    return;
+  }
+
+  // 3. Try to fetch rider id and driver id based on authId relation
+  const { data: riderData, error: riderError } = await supabase
+    .from("riders")
+    .select("id, users!inner(auth_id)")
+    .eq("users.auth_id", authId)
+    .single();
+
+  const { data: driverData, error: driverError } = await supabase
+    .from("drivers")
+    .select("id, users!inner(auth_id)")
+    .eq("users.auth_id", authId)
+    .single();
+
+  // 4. Attach riderId if found, else null
+  (authData as any).riderId = riderError ? null : riderData?.id ?? null;
+  (authData as any).driverId = driverError ? null : driverData?.id ?? null;
+
+  // 5. Respond with auth data + rider id (or null)
   res.status(200).json({
     status: 200,
     message: "Login successful.",
     code: "LOGIN_SUCCESS",
-    data,
+    data: authData,
   });
 };
 
@@ -156,9 +191,6 @@ export const refreshToken = async (
     const { data, error } = await supabase.auth.refreshSession({
       refresh_token: refreshToken,
     });
-
-    console.log(refreshToken);
-    console.log(data, error);
 
     if (error) {
       res.status(401).json({
