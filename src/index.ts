@@ -12,6 +12,7 @@ import {
 } from "./middlewares/errorHandler";
 
 import authRoutes from "./routes/authRoutes";
+import driverRoutes from "./routes/driverRoutes";
 import fareRoutes from "./routes/fareRoutes";
 import healthRoutes from "./routes/healthRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
@@ -27,10 +28,11 @@ app.use(express.json());
 // Routes
 app.use("/", healthRoutes);
 app.use("/auth", authRoutes);
+app.use("/driver", authenticateUser, driverRoutes);
 app.use("/fare", authenticateUser, fareRoutes);
 app.use("/payment", authenticateUser, paymentRoutes);
-app.use("/user", authenticateUser, userRoutes);
 app.use("/rider", authenticateUser, riderRoutes);
+app.use("/user", authenticateUser, userRoutes);
 
 // Swagger
 setupSwagger(app);

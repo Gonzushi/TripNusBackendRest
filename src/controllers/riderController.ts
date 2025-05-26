@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import supabase from "../supabaseClient";
-import { v4 as uuidv4 } from "uuid";
 
 // Create rider profile
 export const createProfile = async (
@@ -93,7 +92,7 @@ export const createProfile = async (
   }
 };
 
-// Upload user profile picture
+// Upload rider profile picture
 export const uploadProfilePicture = async (
   req: Request,
   res: Response
