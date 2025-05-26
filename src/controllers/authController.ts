@@ -1,21 +1,22 @@
-import { Request, Response } from "express";
+import { FastifyRequest, FastifyReply } from "fastify";
+import { AuthenticatedRequest } from "../types/request";
 import supabase from "../supabaseClient";
 
 // Register a new user
-export const register = async (req: Request, res: Response): Promise<void> => {
-  const { email, password } = req.body;
+export const register = async (
+  request: FastifyRequest<{ Body: { email: string; password: string } }>,
+  reply: FastifyReply
+): Promise<void> => {
+  const { email, password } = request.body;
 
-  // Check if an active user with the same email exists
   const { data: existingUserData, error: existingUserError } = await supabase
     .from("users")
     .select("id")
     .eq("email", email)
     .single();
 
-  console.log(existingUserData, existingUserError);
-
   if (existingUserError && existingUserError.code !== "PGRST116") {
-    res.status(500).json({
+    reply.status(500).send({
       status: 500,
       error: "Database query failed",
       message:
@@ -27,7 +28,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   }
 
   if (existingUserData) {
-    res.status(409).json({
+    reply.status(409).send({
       status: 409,
       error: "Email already in use",
       message:
@@ -37,14 +38,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  // Proceed with signup
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
   });
 
   if (signUpError) {
-    res.status(400).json({
+    reply.status(400).send({
       status: 400,
       error: "User registration failed",
       message:
@@ -55,7 +55,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  res.status(201).json({
+  reply.status(201).send({
     status: 201,
     message:
       "User registered successfully. Please check your email to activate your account.",
@@ -66,13 +66,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 // Resend Activation Email
 export const resendActivation = async (
-  req: Request,
-  res: Response
+  request: FastifyRequest<{ Body: { email: string } }>,
+  reply: FastifyReply
 ): Promise<void> => {
-  const { email } = req.body;
+  const { email } = request.body;
 
   if (!email) {
-    res.status(400).json({
+    reply.status(400).send({
       status: 400,
       error: "Missing email",
       message: "Email is required to resend activation.",
@@ -87,7 +87,7 @@ export const resendActivation = async (
   });
 
   if (error) {
-    res.status(400).json({
+    reply.status(400).send({
       status: 400,
       error: "Resend failed",
       message:
@@ -98,7 +98,7 @@ export const resendActivation = async (
     return;
   }
 
-  res.status(200).json({
+  reply.status(200).send({
     status: 200,
     message:
       "If the email is registered and not yet activated, an activation link has been sent. Please check your inbox.",
@@ -108,8 +108,11 @@ export const resendActivation = async (
 };
 
 // Login
-export const login = async (req: Request, res: Response): Promise<void> => {
-  const { email, password } = req.body;
+export const login = async (
+  request: FastifyRequest<{ Body: { email: string; password: string } }>,
+  reply: FastifyReply
+): Promise<void> => {
+  const { email, password } = request.body;
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -117,7 +120,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   });
 
   if (error) {
-    res.status(401).json({
+    reply.status(401).send({
       status: 401,
       error: "Authentication failed",
       message: "Invalid email or password.",
@@ -127,7 +130,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  res.status(200).json({
+  reply.status(200).send({
     status: 200,
     message: "Login successful.",
     code: "LOGIN_SUCCESS",
@@ -137,13 +140,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 // Refresh Token
 export const refreshToken = async (
-  req: Request,
-  res: Response
+  request: FastifyRequest<{ Body: { refreshToken: string } }>,
+  reply: FastifyReply
 ): Promise<void> => {
-  const { refreshToken } = req.body;
+  const { refreshToken } = request.body;
 
   if (!refreshToken) {
-    res.status(400).json({
+    reply.status(400).send({
       status: 400,
       error: "Bad Request",
       message: "Refresh token is required",
@@ -157,11 +160,8 @@ export const refreshToken = async (
       refresh_token: refreshToken,
     });
 
-    console.log(refreshToken);
-    console.log(data, error);
-
     if (error) {
-      res.status(401).json({
+      reply.status(401).send({
         status: 401,
         error: "Unauthorized",
         message: error.message,
@@ -170,14 +170,14 @@ export const refreshToken = async (
       return;
     }
 
-    res.status(200).json({
+    reply.status(200).send({
       status: 200,
       message: "Access token refreshed successfully",
       code: "REFRESH_SUCCESS",
       data,
     });
-  } catch (err) {
-    res.status(500).json({
+  } catch {
+    reply.status(500).send({
       status: 500,
       error: "Internal Server Error",
       message: "An unexpected error occurred during token refresh.",
@@ -187,12 +187,16 @@ export const refreshToken = async (
 };
 
 // Logout
-export const logout = async (req: Request, res: Response): Promise<void> => {
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  const { scope = "local" } = req.body;
+export const logout = async (
+  request: FastifyRequest<{ Body: { scope?: "global" | "local" | "others" } }>,
+  reply: FastifyReply
+): Promise<void> => {
+  const authHeader = request.headers.authorization;
+  const accessToken = authHeader?.split(" ")[1];
+  const scope = request.body.scope ?? "local";
 
   if (!accessToken) {
-    res.status(400).json({
+    reply.status(400).send({
       status: 400,
       error: "Bad Request",
       message: "Access token is required for logout.",
@@ -205,7 +209,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     const { error } = await supabase.auth.admin.signOut(accessToken, scope);
 
     if (error) {
-      res.status(400).json({
+      reply.status(400).send({
         status: 400,
         error: "Logout failed",
         message: error.message,
@@ -214,13 +218,13 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.status(200).json({
+    reply.status(200).send({
       status: 200,
       message: `Logged out successfully. Your session has been revoked (${scope} scope).`,
       code: "LOGOUT_SUCCESS",
     });
-  } catch (err) {
-    res.status(500).json({
+  } catch {
+    reply.status(500).send({
       status: 500,
       error: "Internal Server Error",
       message: "An unexpected error occurred during logout.",
@@ -231,10 +235,10 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 
 // Reset Password (send reset email)
 export const resetPasswordForEmail = async (
-  req: Request,
-  res: Response
+  request: FastifyRequest<{ Body: { email: string } }>,
+  reply: FastifyReply
 ): Promise<void> => {
-  const { email } = req.body;
+  const { email } = request.body;
 
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo:
@@ -243,7 +247,7 @@ export const resetPasswordForEmail = async (
   });
 
   if (error) {
-    res.status(400).json({
+    reply.status(400).send({
       status: 400,
       error: "Password Reset Failed",
       message: error.message,
@@ -252,7 +256,7 @@ export const resetPasswordForEmail = async (
     return;
   }
 
-  res.status(200).json({
+  reply.status(200).send({
     status: 200,
     message:
       "If an account with that email exists, a password reset email has been sent.",
@@ -262,14 +266,16 @@ export const resetPasswordForEmail = async (
 
 // Change Password
 export const changePassword = async (
-  req: Request,
-  res: Response
+  request: AuthenticatedRequest<{
+    Body: { password: string };
+  }>,
+  reply: FastifyReply
 ): Promise<void> => {
-  const userId = req.user?.sub;
-  const { password } = req.body;
+  const userId = request.user?.sub;
+  const { password } = request.body;
 
   if (!userId) {
-    res.status(401).json({
+    reply.status(401).send({
       status: 401,
       error: "Unauthorized",
       message: "User ID not found in request context.",
@@ -279,7 +285,7 @@ export const changePassword = async (
   }
 
   if (!password || typeof password !== "string") {
-    res.status(400).json({
+    reply.status(400).send({
       status: 400,
       error: "Bad Request",
       message: "Password is required and must be a string.",
@@ -294,7 +300,7 @@ export const changePassword = async (
     });
 
     if (error) {
-      res.status(400).json({
+      reply.status(400).send({
         status: 400,
         error: "Update Failed",
         message: error.message,
@@ -303,13 +309,13 @@ export const changePassword = async (
       return;
     }
 
-    res.status(200).json({
+    reply.status(200).send({
       status: 200,
       message: "Password updated successfully",
       code: "PASSWORD_UPDATED",
     });
-  } catch (err) {
-    res.status(500).json({
+  } catch {
+    reply.status(500).send({
       status: 500,
       error: "Internal Server Error",
       message: "An unexpected error occurred while updating the password.",
@@ -319,9 +325,12 @@ export const changePassword = async (
 };
 
 // JWT Checker
-export const jwtChecker = (req: Request, res: Response): void => {
-  if (!req.user) {
-    res.status(401).json({
+export const jwtChecker = async (
+  request: AuthenticatedRequest,
+  reply: FastifyReply
+): Promise<void> => {
+  if (!request.user) {
+    reply.status(401).send({
       status: 401,
       error: "Unauthorized",
       message: "Missing or invalid token",
@@ -330,10 +339,9 @@ export const jwtChecker = (req: Request, res: Response): void => {
     return;
   }
 
-  res.status(200).json({
+  reply.status(200).send({
     status: 200,
     message: "JWT token is valid",
     code: "TOKEN_VALID",
-    data: req.user,
   });
 };

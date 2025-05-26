@@ -1,18 +1,17 @@
-import { Request, Response, NextFunction } from "express";
-import { DecodedToken } from "../types/auth";
+import { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
+import { DecodedToken } from "../types/auth";
 
 const JWT_SECRET = process.env.SUPABASE_JWT_SECRET!;
 
-export const authenticateUser = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  const authHeader = req.headers.authorization;
+export async function authenticateUser(
+  request: FastifyRequest & { user?: DecodedToken },
+  reply: FastifyReply
+): Promise<void> {
+  const authHeader = request.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    res.status(401).json({
+    reply.status(401).send({
       status: 401,
       error: "Unauthorized",
       message: "Missing or invalid Authorization header",
@@ -25,14 +24,16 @@ export const authenticateUser = (
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
-    req.user = decoded;
-    next();
+    // Attach decoded user info to request.user
+    // Fastify allows extending request interface with decorators or types
+    request.user = decoded;
   } catch (err) {
-    res.status(401).json({
+    reply.status(401).send({
       status: 401,
       error: "Unauthorized",
       message: "Invalid or expired token",
       code: "INVALID_TOKEN",
     });
+    return;
   }
-};
+}

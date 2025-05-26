@@ -1,126 +1,206 @@
-import { Router, Request, Response } from "express";
-import * as path from "path";
-import * as fs from "fs";
-import os from "os";
-import supabase from "../supabaseClient";
-import redisConfig from "../config/redisConfig";
-import Redis from "ioredis";
+import { FastifyInstance } from "fastify";
+import { getHealthStatus } from "../controllers/healthController";
 
-// Load package.json once
-const packageJsonPath = path.resolve(__dirname, "../../package.json");
-const packageData = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-
-const router = Router();
-const redis = new Redis(redisConfig);
-
-router.get("/", async (_req: Request, res: Response) => {
-  // Check Supabase health
-  let supabaseStatus = "unknown";
-  try {
-    const { error } = await supabase.from("users").select("*").limit(1);
-    supabaseStatus = error ? "unreachable" : "reachable";
-  } catch {
-    supabaseStatus = "unreachable";
-  }
-
-  // Check Redis health
-  let redisStatus = "unknown";
-  try {
-    const pong = await redis.ping();
-    redisStatus = pong === "PONG" ? "reachable" : "unreachable";
-  } catch {
-    redisStatus = "unreachable";
-  }
-
-  // Gather system metrics
-  const mem = process.memoryUsage();
-  const load = os.loadavg();
-  const cpu = process.cpuUsage();
-  const freemem = os.freemem();
-  const totalmem = os.totalmem();
-
-  // Build response object
-  const response = {
-    status: "ok",
-    service: packageData.name,
-    version: packageData.version,
-    description: packageData.description,
-    uptimeSeconds: process.uptime(),
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || "development",
-
-    database: {
-      supabase: supabaseStatus,
-    },
-
-    services: {
-      redis: redisStatus,
-      paymentGateway: "not implemented", // Add your payment gateway check here if needed
-    },
-
-    deployment: {
-      gitCommit: process.env.GIT_COMMIT || "unknown",
-      buildTime: process.env.BUILD_TIME || "unknown",
-      port: process.env.PORT || "unknown",
-      timezone:
-        process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone,
-    },
-
-    node: {
-      version: process.version,
-      memoryUsageMB: {
-        rss: +(mem.rss / 1024 / 1024).toFixed(1),
-        heapTotal: +(mem.heapTotal / 1024 / 1024).toFixed(1),
-        heapUsed: +(mem.heapUsed / 1024 / 1024).toFixed(1),
-      },
-      cpuUsageMicros: {
-        user: cpu.user,
-        system: cpu.system,
-      },
-    },
-
-    system: {
-      hostname: os.hostname(),
-      platform: process.platform,
-      arch: process.arch,
-      loadavg: {
-        "1min": +load[0].toFixed(2),
-        "5min": +load[1].toFixed(2),
-        "15min": +load[2].toFixed(2),
-      },
-      memoryMB: {
-        free: +(freemem / 1024 / 1024).toFixed(1),
-        total: +(totalmem / 1024 / 1024).toFixed(1),
-      },
-      cpus: os.cpus().length,
-      uptimeSeconds: os.uptime(),
-    },
-
-    process: {
-      pid: process.pid,
-      title: process.title,
-      nodeEnv: process.env.NODE_ENV,
-    },
-
-    dependencies:
-      process.env.NODE_ENV !== "production"
-        ? packageData.dependencies || {}
-        : {
-            express: packageData.dependencies?.express || "unknown",
-            "@supabase/supabase-js":
-              packageData.dependencies?.["@supabase/supabase-js"] || "unknown",
+export default async function healthRoutes(fastify: FastifyInstance) {
+  fastify.get("/", {
+    schema: {
+      summary: "Health Check",
+      description:
+        "Returns health status of the server and connected services.",
+      tags: ["Health"],
+      security: [],
+      response: {
+        200: {
+          description: "Successful health check response",
+          type: "object",
+          properties: {
+            status: { type: "string" },
+            service: { type: "string" },
+            version: { type: "string" },
+            description: { type: "string" },
+            uptimeSeconds: { type: "number" },
+            timestamp: { type: "string", format: "date-time" },
+            environment: { type: "string" },
+            database: {
+              type: "object",
+              properties: {
+                supabase: { type: "string" },
+              },
+            },
+            services: {
+              type: "object",
+              properties: {
+                redis: { type: "string" },
+                paymentGateway: { type: "string" },
+              },
+            },
+            deployment: {
+              type: "object",
+              properties: {
+                gitCommit: { type: "string" },
+                buildTime: { type: "string" },
+                port: { type: "string" },
+                timezone: { type: "string" },
+              },
+            },
+            node: {
+              type: "object",
+              properties: {
+                version: { type: "string" },
+                memoryUsageMB: {
+                  type: "object",
+                  properties: {
+                    rss: { type: "number" },
+                    heapTotal: { type: "number" },
+                    heapUsed: { type: "number" },
+                  },
+                },
+                cpuUsageMicros: {
+                  type: "object",
+                  properties: {
+                    user: { type: "number" },
+                    system: { type: "number" },
+                  },
+                },
+              },
+            },
+            system: {
+              type: "object",
+              properties: {
+                hostname: { type: "string" },
+                platform: { type: "string" },
+                arch: { type: "string" },
+                loadavg: {
+                  type: "object",
+                  properties: {
+                    "1min": { type: "number" },
+                    "5min": { type: "number" },
+                    "15min": { type: "number" },
+                  },
+                },
+                memoryMB: {
+                  type: "object",
+                  properties: {
+                    free: { type: "number" },
+                    total: { type: "number" },
+                  },
+                },
+                cpus: { type: "number" },
+                uptimeSeconds: { type: "number" },
+              },
+            },
+            process: {
+              type: "object",
+              properties: {
+                pid: { type: "number" },
+                title: { type: "string" },
+                nodeEnv: { type: "string", nullable: true },
+              },
+            },
+            dependencies: {
+              type: "object",
+              additionalProperties: { type: "string" },
+            },
+            devDependencies: {
+              type: "object",
+              additionalProperties: { type: "string" },
+              nullable: true,
+            },
           },
-
-    devDependencies:
-      process.env.NODE_ENV !== "production"
-        ? packageData.devDependencies || {}
-        : undefined,
-  };
-
-  const prettyJson = JSON.stringify(response, null, 2);
-
-  res.setHeader("Content-Type", "application/json");
-  res.send(prettyJson);
-});
-
-export default router;
+          example: {
+            status: "ok",
+            service: "tripnus-backend-rest",
+            version: "1.0.0",
+            description:
+              "Backend service for TripNus, a motorcycle ride-hailing platform providing real-time booking, fare estimation, and secure payment APIs.",
+            uptimeSeconds: 18.12,
+            timestamp: "2025-05-26T08:55:02.048Z",
+            environment: "development",
+            database: {
+              supabase: "reachable",
+            },
+            services: {
+              redis: "reachable",
+              paymentGateway: "not implemented",
+            },
+            deployment: {
+              gitCommit: "unknown",
+              buildTime: "unknown",
+              port: "3000",
+              timezone: "Asia/Jakarta",
+            },
+            node: {
+              version: "v22.15.1",
+              memoryUsageMB: {
+                rss: 111.5,
+                heapTotal: 53,
+                heapUsed: 23,
+              },
+              cpuUsageMicros: {
+                user: 414131,
+                system: 82961,
+              },
+            },
+            system: {
+              hostname: "Hendrys-MacBook-Pro.local",
+              platform: "darwin",
+              arch: "arm64",
+              loadavg: {
+                "1min": 2.15,
+                "5min": 2.29,
+                "15min": 2.2,
+              },
+              memoryMB: {
+                free: 116.6,
+                total: 16384,
+              },
+              cpus: 8,
+              uptimeSeconds: 2080716,
+            },
+            process: {
+              pid: 7651,
+              title:
+                "/Users/hendrywidyanto/.nvm/versions/node/v22.15.1/bin/node",
+            },
+            dependencies: {
+              "@fastify/cors": "^11.0.1",
+              "@fastify/swagger": "^9.5.1",
+              "@fastify/swagger-ui": "^5.2.2",
+              "@supabase/supabase-js": "^2.49.6",
+              axios: "^1.9.0",
+              cors: "^2.8.5",
+              dotenv: "^16.5.0",
+              express: "^5.1.0",
+              fastify: "^5.3.3",
+              ioredis: "^5.6.1",
+              jsonwebtoken: "^9.0.2",
+              "midtrans-client": "^1.4.2",
+              multer: "^2.0.0",
+              pm2: "^6.0.6",
+              "pm2-runtime": "^5.4.1",
+              "swagger-jsdoc": "^6.2.8",
+              "swagger-ui-express": "^5.0.1",
+              uuid: "^11.1.0",
+            },
+            devDependencies: {
+              "@types/cors": "^2.8.18",
+              "@types/express": "^5.0.2",
+              "@types/jsonwebtoken": "^9.0.9",
+              "@types/multer": "^1.4.12",
+              "@types/node": "^22.15.19",
+              "@types/swagger-jsdoc": "^6.0.4",
+              "@types/swagger-ui-express": "^4.1.8",
+              "ts-node-dev": "^2.0.0",
+              typescript: "^5.8.3",
+            },
+          },
+        },
+      },
+    },
+    handler: async (_request, reply) => {
+      const health = await getHealthStatus();
+      const prettyJson = JSON.stringify(health, null, 2);
+      reply.type("application/json").send(prettyJson);
+    },
+  });
+}

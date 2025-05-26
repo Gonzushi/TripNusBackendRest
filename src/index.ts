@@ -1,15 +1,16 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import express from "express";
-import cors from "cors";
-import { setupSwagger } from "./swagger";
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import fastifySwagger from "@fastify/swagger";
+import fastifySwaggerUI from "@fastify/swagger-ui";
+
+import fastifyConfig from "./configs/fastifyConfig";
+import { swaggerConfig, swaggerUiConfig } from "./configs/swaggerConfig";
 
 import { authenticateUser } from "./middlewares/authHandler";
-import {
-  jsonParseErrorHandler,
-  generalErrorHandler,
-} from "./middlewares/errorHandler";
+import { errorHandler } from "./middlewares/errorHandler";
 
 import authRoutes from "./routes/authRoutes";
 import fareRoutes from "./routes/fareRoutes";
@@ -17,31 +18,45 @@ import healthRoutes from "./routes/healthRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
 import userRoutes from "./routes/userRoutes";
 
-const app = express();
+// Create Fastify instance
+const app = Fastify(fastifyConfig);
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+async function startServer() {
+  // Register CORS
+  await app.register(cors);
 
-// Routes
-app.use("/", healthRoutes);
-app.use("/auth", authRoutes);
-app.use("/fare", authenticateUser, fareRoutes);
-app.use("/payment", authenticateUser, paymentRoutes);
-app.use("/user", authenticateUser, userRoutes);
+  // Register Swagger
+  await app.register(fastifySwagger, swaggerConfig);
+  await app.register(fastifySwaggerUI, swaggerUiConfig);
 
-// Swagger
-setupSwagger(app);
+  // Custom Error Handler
+  app.setErrorHandler(errorHandler);
 
-// Error Handlers
-app.use(jsonParseErrorHandler);
-app.use(generalErrorHandler);
+  // Register routes
+  await app.register(healthRoutes);
+  await app.register(
+    async (instance) => {
+      instance.addHook("preHandler", authenticateUser);
+      await app.register(fareRoutes, { prefix: "/fare" });
+      await app.register(authRoutes, { prefix: "/auth" });
+      //   await app.register(paymentRoutes, { prefix: "/payment" });
+      //   await app.register(userRoutes, { prefix: "/user" });
+    },
+    { prefix: "/" }
+  );
 
-// Start Server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`
-🚀 Server running on port ${PORT}
+  // Start Server
+  const PORT = Number(process.env.PORT) || 3000;
+  try {
+    await app.listen({ port: PORT });
+    console.log(`
+🚀 Server running at http://localhost:${PORT}
 📚 Swagger docs available at http://localhost:${PORT}/docs
-  `);
-});
+    `);
+  } catch (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
+}
+
+startServer();

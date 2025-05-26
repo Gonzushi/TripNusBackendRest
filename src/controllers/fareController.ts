@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { FastifyRequest, FastifyReply } from "fastify";
 import axios from "axios";
 
 const MAPBOX_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
@@ -42,16 +42,21 @@ function calculateFare(distanceMeters: number, durationSeconds: number) {
   };
 }
 
-// Create fare controller
+// Fastify-style handler
 export const calcaulateFare = async (
-  req: Request,
-  res: Response
+  request: FastifyRequest<{
+    Body: {
+      pickpoint: Coordinates;
+      dropoff: Coordinates;
+    };
+  }>,
+  reply: FastifyReply
 ): Promise<void> => {
   try {
-    const { pickpoint, dropoff } = req.body;
+    const { pickpoint, dropoff } = request.body;
 
     if (!pickpoint || !dropoff) {
-      res.status(400).json({ error: "pickpoint and dropoff are required" });
+      reply.status(400).send({ error: "pickpoint and dropoff are required" });
       return;
     }
 
@@ -63,7 +68,7 @@ export const calcaulateFare = async (
       !pickpoint.every((coord) => typeof coord === "number" && !isNaN(coord)) ||
       !dropoff.every((coord) => typeof coord === "number" && !isNaN(coord))
     ) {
-      res.status(400).json({
+      reply.status(400).send({
         error:
           "pickpoint and dropoff must be arrays of two valid numbers [lng, lat]",
       });
@@ -81,7 +86,7 @@ export const calcaulateFare = async (
     });
 
     if (response.status < 200 || response.status >= 300) {
-      res.status(response.status).json({
+      reply.status(response.status).send({
         error: "Failed to get route from Mapbox",
         details: response.data,
       });
@@ -91,7 +96,7 @@ export const calcaulateFare = async (
     const routing = response.data;
 
     if (routing.code !== "Ok") {
-      res.status(500).json({ error: "Mapbox did not return a valid route." });
+      reply.status(500).send({ error: "Mapbox did not return a valid route." });
       return;
     }
 
@@ -100,13 +105,13 @@ export const calcaulateFare = async (
 
     const fare = calculateFare(distance, duration);
 
-    res.json({
+    reply.send({
       fare,
       routing,
     });
   } catch (error: any) {
     console.error("Internal error:", error?.response?.data || error.message);
-    res.status(500).json({
+    reply.status(500).send({
       error: "Internal server error",
       details: error?.response?.data || error.message,
     });

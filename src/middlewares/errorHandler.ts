@@ -1,19 +1,16 @@
-import { ErrorRequestHandler, Request, Response, NextFunction } from "express";
+import { FastifyError, FastifyReply, FastifyRequest } from "fastify";
 
-// Handle JSON parse errors
-export const jsonParseErrorHandler: ErrorRequestHandler = (
-  err,
-  req,
-  res,
-  next
-): void => {
+export function errorHandler(
+  error: FastifyError,
+  request: FastifyRequest,
+  reply: FastifyReply
+): void {
+  // Handle invalid JSON or content type errors
   if (
-    err instanceof SyntaxError &&
-    (err as any).status === 400 &&
-    "body" in err
+    error.code === "FST_ERR_CTP_INVALID_CONTENT_TYPE" ||
+    error.code === "FST_ERR_CTP_BODY_PARSE"
   ) {
-    console.error("Invalid JSON error:", err.message);
-    res.status(400).json({
+    reply.status(400).send({
       status: 400,
       error: "Bad Request",
       message: "Invalid JSON format in request body.",
@@ -21,22 +18,14 @@ export const jsonParseErrorHandler: ErrorRequestHandler = (
     });
     return;
   }
-  next(err);
-};
 
-// Catch-all error handler
-export const generalErrorHandler = (
-  err: any,
-  _req: Request,
-  res: Response,
-  _next: NextFunction
-): void => {
-  console.error("Unexpected error:", err);
-  res.status(500).json({
-    status: 500,
-    error: "Internal Server Error",
-    message: "An unexpected error occurred.",
+  // General error fallback
+  request.log.error(error);
+
+  reply.status(error.statusCode || 500).send({
+    status: error.statusCode || 500,
+    error: error.name || "Internal Server Error",
+    message: error.message || "An unexpected error occurred.",
     code: "INTERNAL_ERROR",
-    details: err?.message || undefined,
   });
-};
+}

@@ -1,60 +1,56 @@
-import express from "express";
+// routes/fareRoutes.ts
+
+import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { calcaulateFare } from "../controllers/fareController";
 
-const router = express.Router();
+export default async function fareRoutes(fastify: FastifyInstance) {
+  fastify.post(
+    "/calculate",
+    {
+      schema: {
+        tags: ["Fare"],
+        summary: "Calculate fare for a ride",
+        body: {
+          type: "object",
+          required: ["pickpoint", "dropoff"],
+          properties: {
+            pickpoint: {
+              type: "array",
+              items: { type: "number" },
+              example: [106.844877, -6.473127],
+              minItems: 2,
+              maxItems: 2,
+            },
+            dropoff: {
+              type: "array",
+              items: { type: "number" },
+              example: [106.841782, -6.484847],
+              minItems: 2,
+              maxItems: 2,
+            },
+          },
+        },
 
-/**
- * @swagger
- * /fare/calculate:
- *   post:
- *     summary: Calculate fare for a ride
- *     tags: [Fare]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - pickpoint
- *               - dropoff
- *             properties:
- *               pickpoint:
- *                 type: array
- *                 items:
- *                   type: number
- *                 description: "[longitude, latitude] of pickup"
- *                 example: [106.844877, -6.473127]
- *               dropoff:
- *                 type: array
- *                 items:
- *                   type: number
- *                 description: "[longitude, latitude] of dropoff"
- *                 example: [106.841782, -6.484847]
- *     responses:
- *       200:
- *         description: Fare calculated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 fare:
- *                   type: object
- *                   properties:
- *                     car:
- *                       type: number
- *                     motorcycle:
- *                       type: number
- *                 routing:
- *                   type: object
- *       400:
- *         description: Bad request
- *       500:
- *         description: Server error
- */
-router.post("/calculate", calcaulateFare);
-
-export default router;
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              fare: {
+                type: "object",
+                properties: {
+                  car: { type: "number" },
+                  motorcycle: { type: "number" },
+                },
+              },
+              routing: { type: "object" },
+            },
+          },
+          400: { description: "Bad request" },
+          500: { description: "Server error" },
+        },
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    calcaulateFare
+  );
+}
