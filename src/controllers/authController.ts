@@ -107,7 +107,7 @@ export const resendActivation = async (
   });
 };
 
-// Login
+// Login - need to return if the email is not activated yet, so we can handle it on the client side
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
@@ -188,7 +188,7 @@ export const refreshToken = async (
   }
 
   try {
-    const { data, error } = await supabase.auth.refreshSession({
+    const { data, error } = await supabaseAnon.auth.refreshSession({
       refresh_token: refreshToken,
     });
 
