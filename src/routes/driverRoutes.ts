@@ -112,7 +112,7 @@ router.post("/profile", createProfile);
 /**
  * @swagger
  * /driver/picture:
- *   post:
+ *   patch:
  *     summary: Upload driver photo (profile picture, KTP, or driver license)
  *     tags: [Driver]
  *     security:
@@ -247,12 +247,12 @@ router.post("/profile", createProfile);
  *                   type: string
  *                   example: INTERNAL_ERROR
  */
-router.post("/picture", upload.single("file"), uploadPicture);
+router.patch("/picture", upload.single("file"), uploadPicture);
 
 /**
  * @swagger
  * /driver/profile:
- *   put:
+ *   patch:
  *     summary: Update driver profile information
  *     tags: [Driver]
  *     security:
@@ -384,6 +384,6 @@ router.post("/picture", upload.single("file"), uploadPicture);
  *                   type: string
  *                   example: INTERNAL_ERROR
  */
-router.put("/profile", updateProfile);
+router.patch("/profile", updateProfile);
 
 export default router;

@@ -1,5 +1,5 @@
 import express from "express";
-import { createRide } from "../controllers/rideController";
+import { createRide, updateRide } from "../controllers/rideController";
 
 const router = express.Router();
 
@@ -177,5 +177,148 @@ const router = express.Router();
  *                   example: INTERNAL_ERROR
  */
 router.post("/", createRide);
+
+/**
+ * @swagger
+ * /ride/update:
+ *   patch:
+ *     summary: Update an existing ride
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - rideId
+ *             properties:
+ *               rideId:
+ *                 type: string
+ *                 example: "uuid-of-ride"
+ *               driver_id:
+ *                 type: string
+ *                 example: "uuid-of-driver"
+ *               status:
+ *                 type: string
+ *                 example: "in_progress"
+ *               ended_at:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2025-05-28T09:30:00Z"
+ *               actual_pickup_coords:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 example: [106.827153, -6.175392]
+ *               actual_dropoff_coords:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 example: [106.84513, -6.208763]
+ *     responses:
+ *       200:
+ *         description: Ride updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Ride is updated successfully
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_UPDATED
+ *                 data:
+ *                   type: object
+ *                   example:
+ *                     id: "uuid-of-ride"
+ *                     status: "in_progress"
+ *                     driver_id: "uuid-of-driver"
+ *       400:
+ *         description: Bad request due to invalid or missing update fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: Bad Request
+ *                 message:
+ *                   type: string
+ *                   example: No valid fields provided for update.
+ *                 code:
+ *                   type: string
+ *                   example: NO_FIELDS_TO_UPDATE
+ *       401:
+ *         description: Unauthorized - user not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: User ID not found in request context.
+ *                 code:
+ *                   type: string
+ *                   example: USER_NOT_FOUND
+ *       404:
+ *         description: Ride not found or already completed/cancelled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 error:
+ *                   type: string
+ *                   example: Not Found
+ *                 message:
+ *                   type: string
+ *                   example: Ride not found or it has been completed/cancelled.
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_NOT_FOUND
+ *       500:
+ *         description: Unexpected internal error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while updating the ride.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ */
+
+router.patch("/update", updateRide);
 
 export default router;

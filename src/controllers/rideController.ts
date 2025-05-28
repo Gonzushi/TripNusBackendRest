@@ -50,7 +50,7 @@ export const createRide = async (
     // Get rider_id for the authenticated user
     const { data: riderData, error: riderError } = await supabase
       .from("riders")
-      .select("id") 
+      .select("id")
       .eq("auth_id", authId)
       .single();
 
@@ -60,6 +60,24 @@ export const createRide = async (
         error: "Not Found",
         message: "Rider not found.",
         code: "RIDER_NOT_FOUND",
+      });
+      return;
+    }
+
+    // Check if there is no active ride
+    const { count: rideCount, error: rideError } = await supabase
+      .from("rides")
+      .select("id", { count: "exact" })
+      .eq("rider_id", riderData.id)
+      .filter("status", "not.in", "(completed,cancelled)");
+
+    // Then, throw an error if an active ride already exists
+    if (rideCount && rideCount > 0) {
+      res.status(400).json({
+        status: 400,
+        error: "Active Ride Exists",
+        message: "Rider currently has an active ride.",
+        code: "ACTIVE_RIDE_EXISTS",
       });
       return;
     }
@@ -141,6 +159,150 @@ export const createRide = async (
       status: 500,
       error: "Internal Server Error",
       message: "An unexpected error occurred while creating the ride.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};
+
+export const updateRide = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const authId = req.user?.sub;
+  const { rideId } = req.body;
+
+  const updateFields = [
+    "driver_id",
+    "status",
+    "ended_at",
+    "actual_pickup_coords",
+    "actual_dropoff_coords",
+  ];
+
+  if (!authId) {
+    res.status(401).json({
+      status: 401,
+      error: "Unauthorized",
+      message: "User ID not found in request context.",
+      code: "USER_NOT_FOUND",
+    });
+    return;
+  }
+
+  try {
+    // Check ride exists and is not completed/cancelled
+    const { data: rideData, error: rideError } = await supabase
+      .from("rides")
+      .select("id")
+      .eq("id", rideId)
+      .filter("status", "not.in", "(completed,cancelled)")
+      .single();
+
+    if (rideError || !rideData) {
+      res.status(404).json({
+        status: 404,
+        error: "Not Found",
+        message:
+          rideError?.message ??
+          "Ride not found or it has been completed/cancelled.",
+        code: "RIDE_NOT_FOUND",
+      });
+      return;
+    }
+
+    // Prepare parameters for RPC
+    const updates: {
+      p_ride_id: string;
+      p_driver_id?: string | null;
+      p_status?: string | null;
+      p_ended_at?: string | null;
+      p_actual_pickup_coords?: number[] | null;
+      p_actual_dropoff_coords?: number[] | null;
+    } = {
+      p_ride_id: rideId,
+      p_driver_id: null,
+      p_status: null,
+      p_ended_at: null,
+      p_actual_pickup_coords: null,
+      p_actual_dropoff_coords: null,
+    };
+
+    for (const field of updateFields) {
+      if (req.body[field] !== undefined) {
+        switch (field) {
+          case "driver_id":
+            updates.p_driver_id = req.body[field];
+            break;
+          case "status":
+            updates.p_status = req.body[field];
+            break;
+          case "ended_at":
+            updates.p_ended_at = req.body[field];
+            break;
+          case "actual_pickup_coords":
+            // Validate as array of two numbers [lng, lat]
+            if (
+              Array.isArray(req.body[field]) &&
+              req.body[field].length === 2 &&
+              typeof req.body[field][0] === "number" &&
+              typeof req.body[field][1] === "number"
+            ) {
+              updates.p_actual_pickup_coords = req.body[field];
+            }
+            break;
+          case "actual_dropoff_coords":
+            if (
+              Array.isArray(req.body[field]) &&
+              req.body[field].length === 2 &&
+              typeof req.body[field][0] === "number" &&
+              typeof req.body[field][1] === "number"
+            ) {
+              updates.p_actual_dropoff_coords = req.body[field];
+            }
+            break;
+        }
+      }
+    }
+
+    // Check if any fields to update
+    const hasUpdates = Object.values(updates).some(
+      (v) => v !== null && v !== undefined
+    );
+    if (!hasUpdates) {
+      res.status(400).json({
+        status: 400,
+        error: "Bad Request",
+        message: "No valid fields provided for update.",
+        code: "NO_FIELDS_TO_UPDATE",
+      });
+      return;
+    }
+
+    // Call RPC to update with geometry
+    const { data, error } = await supabase.rpc("ride_update", updates);
+
+    if (error) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message: error.message,
+        code: "UPDATE_FAILED",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: "Ride is updated successfully",
+      code: "RIDE_UPDATED",
+      data,
+    });
+  } catch (err) {
+    console.error("Unexpected error in updateRide:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while updating the ride.",
       code: "INTERNAL_ERROR",
     });
   }

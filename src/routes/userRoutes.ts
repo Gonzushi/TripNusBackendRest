@@ -7,7 +7,7 @@ const router = express.Router();
 /**
  * @swagger
  * /user/profile:
- *   put:
+ *   patch:
  *     summary: Update user profile (first name and/or last name)
  *     tags: [User]
  *     security:
@@ -118,6 +118,6 @@ const router = express.Router();
  *                   type: string
  *                   example: INTERNAL_ERROR
  */
-router.put("/profile", updateProfile);
+router.patch("/profile", updateProfile);
 
 export default router;
