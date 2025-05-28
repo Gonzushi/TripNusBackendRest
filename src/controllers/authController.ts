@@ -118,8 +118,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       password,
     });
 
-  await supabaseAnon.auth.signOut();
-
   if (authError) {
     res.status(401).json({
       status: 401,
@@ -175,21 +173,21 @@ export const refreshToken = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { refreshToken } = req.body;
+  const { refresh_token } = req.body;
 
-  if (!refreshToken) {
+  if (!refresh_token) {
     res.status(400).json({
       status: 400,
       error: "Bad Request",
-      message: "Refresh token is required",
-      code: "REFRESH_TOKEN_REQUIRED",
+      message: "refresh_token and access_token are required",
+      code: "TOKEN_REQUIRED",
     });
     return;
   }
 
   try {
-    const { data, error } = await supabaseAnon.auth.refreshSession({
-      refresh_token: refreshToken,
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: refresh_token,
     });
 
     if (error) {
@@ -201,6 +199,7 @@ export const refreshToken = async (
       });
       return;
     }
+    console.log("halo");
 
     res.status(200).json({
       status: 200,
@@ -218,7 +217,7 @@ export const refreshToken = async (
   }
 };
 
-// Logout
+// Logout - need to check if I need to use supbaseAnon to logout the token and refresh token
 export const logout = async (req: Request, res: Response): Promise<void> => {
   const accessToken = req.headers.authorization?.split(" ")[1];
   const { scope = "local" } = req.body;

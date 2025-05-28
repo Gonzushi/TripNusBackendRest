@@ -295,9 +295,9 @@ router.post("/login", login);
  *           schema:
  *             type: object
  *             required:
- *               - refreshToken
+ *               - refresh_token
  *             properties:
- *               refreshToken:
+ *               refresh_token:
  *                 type: string
  *                 description: The refresh token obtained during login
  *                 example: 2mnkjrcs2dki
@@ -352,7 +352,7 @@ router.post("/login", login);
  *                   example: Refresh token is required
  *                 code:
  *                   type: string
- *                   example: REFRESH_TOKEN_REQUIRED
+ *                   example: TOKEN_REQUIRED
  *       401:
  *         description: Invalid or expired refresh token
  *         content:
