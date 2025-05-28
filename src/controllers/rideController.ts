@@ -50,8 +50,8 @@ export const createRide = async (
     // Get rider_id for the authenticated user
     const { data: riderData, error: riderError } = await supabase
       .from("riders")
-      .select("id, users(id)") // this declares the join
-      .eq("users.auth_id", authId) // this filters by the joined field
+      .select("id") 
+      .eq("auth_id", authId)
       .single();
 
     if (riderError || !riderData) {

@@ -62,7 +62,7 @@ export const createProfile = async (
   try {
     const { data, error } = await supabase
       .from("riders")
-      .insert([{ user_id: userData.id }])
+      .insert([{ user_id: userData.id, auth_id: authId }])
       .select()
       .single();
 
@@ -125,16 +125,7 @@ export const uploadProfilePicture = async (
     const { data: riderData, error: riderError } = await supabase
       .from("riders")
       .select("id")
-      .eq(
-        "user_id",
-        (
-          await supabase
-            .from("users")
-            .select("id")
-            .eq("auth_id", authId)
-            .single()
-        ).data?.id
-      )
+      .eq("auth_id", authId)
       .single();
 
     if (riderError || !riderData) {
@@ -151,7 +142,7 @@ export const uploadProfilePicture = async (
 
     // Step 2: Build fixed file name (overwrites existing file)
     const fileExtension = file.originalname.split(".").pop();
-    const filePath = `profile-pictures/${riderId}.${fileExtension}`;
+    const filePath = `rider-profile-pictures/${authId}.${fileExtension}`;
 
     // Step 3: Upload with upsert
     const { data: uploadData, error: uploadError } = await supabase.storage

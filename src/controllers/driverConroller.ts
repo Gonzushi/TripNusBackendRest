@@ -62,7 +62,7 @@ export const createProfile = async (
   try {
     const { data, error } = await supabase
       .from("drivers")
-      .insert([{ user_id: userData.id }])
+      .insert([{ user_id: userData.id, auth_id: authId }])
       .select()
       .single();
 
@@ -132,7 +132,7 @@ export const uploadPicture = async (
       updateField: "driver_license_photo_url",
     },
     profile: {
-      pathPrefix: "profile-pictures",
+      pathPrefix: "driver-profile-pictures",
       updateField: "profile_picture_url",
     },
   };
@@ -150,48 +150,30 @@ export const uploadPicture = async (
   }
 
   try {
-    // Step 1: Get user ID
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("auth_id", authId)
-      .single();
-
-    if (userError || !userData) {
-      res.status(404).json({
-        status: 404,
-        error: "Not Found",
-        message: "User not found.",
-        code: "USER_NOT_FOUND",
-      });
-      return;
-    }
-
-    // Step 2: Get driver ID
+    // Step 1: Get driver ID from auth_id
     const { data: driverData, error: driverError } = await supabase
       .from("drivers")
       .select("id")
-      .eq("user_id", userData.id)
+      .eq("auth_id", authId)
       .single();
 
     if (driverError || !driverData) {
       res.status(404).json({
         status: 404,
         error: "Not Found",
-        message: "Driver not found for authenticated user.",
+        message: "Driver not found.",
         code: "DRIVER_NOT_FOUND",
       });
       return;
     }
 
-    const driverId = driverData.id;
+    // Step 2: Upload file
     const fileExtension = file.originalname.split(".").pop();
     const { pathPrefix, updateField } =
       allowedTypes[photoType as keyof typeof allowedTypes];
 
-    const filePath = `${pathPrefix}/${driverId}.${fileExtension}`;
+    const filePath = `${pathPrefix}/${authId}.${fileExtension}`;
 
-    // Step 3: Upload file
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("user-media")
       .upload(filePath, file.buffer, {
@@ -211,11 +193,11 @@ export const uploadPicture = async (
 
     const fileUrl = uploadData.fullPath;
 
-    // Step 4: Update driver record dynamically
+    // Step 3: Update driver record dynamically
     const { data: updatedDriver, error: updateError } = await supabase
       .from("drivers")
       .update({ [updateField]: fileUrl })
-      .eq("id", driverId)
+      .eq("auth_id", authId)
       .select()
       .single();
 
@@ -279,22 +261,21 @@ export const updateProfile = async (
   }
 
   try {
-    const { data: user, error: userError } = await supabase
-      .from("users")
+    const { data: driverData, error: driverError } = await supabase
+      .from("drivers")
       .select("id")
       .eq("auth_id", authId)
       .single();
 
-    if (userError || !user) {
+    if (driverError || !driverData) {
       res.status(404).json({
         status: 404,
         error: "Not Found",
-        message: "User not found.",
-        code: "USER_NOT_FOUND",
+        message: "Driver not found.",
+        code: "DRIVER_NOT_FOUND",
       });
       return;
     }
-
     const updates: Record<string, any> = {};
     for (const field of updateFields) {
       if (req.body[field] !== undefined) {
@@ -315,7 +296,7 @@ export const updateProfile = async (
     const { data, error } = await supabase
       .from("drivers")
       .update(updates)
-      .eq("user_id", user.id)
+      .eq("auth_id", authId)
       .select()
       .single();
 

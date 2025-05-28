@@ -12,8 +12,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     .eq("email", email)
     .single();
 
-  console.log(existingUserData, existingUserError);
-
   if (existingUserError && existingUserError.code !== "PGRST116") {
     res.status(500).json({
       status: 500,
@@ -107,7 +105,7 @@ export const resendActivation = async (
   });
 };
 
-// Login - need to return if the email is not activated yet, so we can handle it on the client side
+// Login
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
@@ -199,8 +197,6 @@ export const refreshToken = async (
       });
       return;
     }
-    console.log("halo");
-
     res.status(200).json({
       status: 200,
       message: "Access token refreshed successfully",
