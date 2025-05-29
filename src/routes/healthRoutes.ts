@@ -3,15 +3,13 @@ import * as path from "path";
 import * as fs from "fs";
 import os from "os";
 import supabase from "../supabaseClient";
-import redisConfig from "../config/redisConfig";
-import Redis from "ioredis";
+import { redis, publisher } from "../index";
 
 // Load package.json once
 const packageJsonPath = path.resolve(__dirname, "../../package.json");
 const packageData = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 
 const router = Router();
-const redis = new Redis(redisConfig);
 
 router.get("/", async (_req: Request, res: Response) => {
   // Check Supabase health
@@ -25,6 +23,7 @@ router.get("/", async (_req: Request, res: Response) => {
 
   // Check Redis health
   let redisStatus = "unknown";
+
   try {
     const pong = await redis.ping();
     redisStatus = pong === "PONG" ? "reachable" : "unreachable";
@@ -120,6 +119,7 @@ router.get("/", async (_req: Request, res: Response) => {
   const prettyJson = JSON.stringify(response, null, 2);
 
   res.setHeader("Content-Type", "application/json");
+  res.status(200);
   res.send(prettyJson);
 });
 

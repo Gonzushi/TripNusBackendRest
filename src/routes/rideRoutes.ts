@@ -1,5 +1,9 @@
 import express from "express";
-import { createRide, updateRide } from "../controllers/rideController";
+import {
+  createRide,
+  sendRideRequest,
+  updateRide,
+} from "../controllers/rideController";
 
 const router = express.Router();
 
@@ -318,7 +322,74 @@ router.post("/", createRide);
  *                   type: string
  *                   example: INTERNAL_ERROR
  */
-
 router.patch("/update", updateRide);
+
+/**
+ * @swagger
+ * /ride/request:
+ *   post:
+ *     summary: Send a new ride request and find nearby drivers
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pickup
+ *             properties:
+ *               pickup:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *                 example: [106.8451, -6.2146]
+ *     responses:
+ *       200:
+ *         description: Nearby drivers returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 drivers:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       distance:
+ *                         type: string
+ *                       coords:
+ *                         type: array
+ *                         items:
+ *                           type: number
+ *       500:
+ *         description: Unexpected internal error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while processing the ride request.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ */
+router.post("/request", sendRideRequest);
 
 export default router;

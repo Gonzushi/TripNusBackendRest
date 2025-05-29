@@ -3,6 +3,8 @@ dotenv.config();
 
 import express from "express";
 import cors from "cors";
+import redisConfig from "./config/redisConfig";
+import Redis from "ioredis";
 import { setupSwagger } from "./swagger";
 
 import { authenticateUser } from "./middlewares/authHandler";
@@ -21,6 +23,8 @@ import riderRoutes from "./routes/riderRoutes";
 import rideRoutes from "./routes/rideRoutes";
 
 const app = express();
+export const redis = new Redis(redisConfig);
+export const publisher = new Redis(redisConfig);
 
 // Middleware
 app.use(cors());
