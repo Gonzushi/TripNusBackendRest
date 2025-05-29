@@ -38,6 +38,6 @@ jobs:
           docker push hendrywidyanto/tripnus-backend-rest:latest
           docker push hendrywidyanto/tripnus-backend-rest:${{ env.SHORT_SHA }}
 
-      - name: Trigger Render Deploy
+      - name: Trigger Coolify Deploy
         run: |
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          curl -X POST "${{ secrets.COOLIFY_DEPLOY_HOOK }}"
