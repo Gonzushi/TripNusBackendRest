@@ -139,6 +139,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 
   // 3. Try to fetch rider id and driver id based on authId relation
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("id, first_name, last_name")
+    .eq("auth_id", authId)
+    .single();
+
   const { data: riderData, error: riderError } = await supabase
     .from("riders")
     .select("id, users!inner(auth_id)")
@@ -152,8 +158,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     .single();
 
   // 4. Attach riderId if found, else null
+  (authData as any).userId = userError ? null : userData?.id ?? null;
   (authData as any).riderId = riderError ? null : riderData?.id ?? null;
   (authData as any).driverId = driverError ? null : driverData?.id ?? null;
+  (authData as any).firstName = userError ? null : userData?.first_name ?? null;
+  (authData as any).last_name = userError ? null : userData?.last_name ?? null;
 
   // 5. Respond with auth data + rider id (or null)
   res.status(200).json({
