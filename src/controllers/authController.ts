@@ -6,11 +6,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
   // Check if an active user with the same email exists
-  const { data: existingUserData, error: existingUserError } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", email)
-    .single();
+  const { data: existingUserData, error: existingUserError } =
+    await supabase.rpc("get_user_by_email", {
+      p_email: "email",
+    });
 
   if (existingUserError && existingUserError.code !== "PGRST116") {
     res.status(500).json({
