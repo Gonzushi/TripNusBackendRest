@@ -8,7 +8,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   // Check if an active user with the same email exists
   const { data: existingUserData, error: existingUserError } =
     await supabase.rpc("get_user_by_email", {
-      p_email: "email",
+      p_email: email,
     });
 
   if (existingUserError && existingUserError.code !== "PGRST116") {
@@ -23,7 +23,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  if (existingUserData) {
+  if (existingUserData.length > 0) {
     res.status(409).json({
       status: 409,
       error: "Email already in use",
