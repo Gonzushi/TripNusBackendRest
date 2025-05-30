@@ -326,3 +326,81 @@ export const updateProfile = async (
     });
   }
 };
+
+// Update Push Token
+export const updateFcmToken = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const authId = req.user?.sub;
+  const { fcm_token } = req.body;
+
+  if (!authId) {
+    res.status(401).json({
+      status: 401,
+      error: "Unauthorized",
+      message: "User ID not found in request context.",
+      code: "USER_NOT_FOUND",
+    });
+    return;
+  }
+
+  if (!fcm_token) {
+    res.status(400).json({
+      status: 400,
+      error: "Bad Request",
+      message: "FCM token is required",
+      code: "FCM_TOKEN_REQUIRED",
+    });
+    return;
+  }
+
+  try {
+    // Get driver_id for the authenticated user
+    const { data: driverData, error: driverError } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("auth_id", authId)
+      .single();
+
+    if (driverError || !driverData) {
+      res.status(404).json({
+        status: 404,
+        error: "Not Found",
+        message: "Driver not found.",
+        code: "DRIVER_NOT_FOUND",
+      });
+      return;
+    }
+
+    // Update FCM token
+    const { error: updateError } = await supabase
+      .from("drivers")
+      .update({ fcm_token })
+      .eq("id", driverData.id);
+
+    if (updateError) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message: updateError.message,
+        code: "FCM_UPDATE_FAILED",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: "FCM token updated successfully",
+      code: "FCM_TOKEN_UPDATED",
+    });
+  } catch (err) {
+    console.error("Unexpected error in updateFcmToken:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while updating FCM token.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};

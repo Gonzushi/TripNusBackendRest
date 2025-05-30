@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import supabase from "../supabaseClient";
 import { redis, publisher } from "../index";
+import { sendPushNotification } from "../services/notificationService";
 
 export const createRide = async (
   req: Request,
@@ -117,11 +118,42 @@ export const createRide = async (
     }
 
     const [pickupLon, pickupLat] = planned_pickup_coords;
+
+    // Check for nearby drivers using Redis
+    type GeoSearchResult = [string, string, [string, string]];
+    const closestDrivers = await redis.geosearch(
+      "drivers:locations",
+      "FROMLONLAT",
+      pickupLon,
+      pickupLat,
+      "BYRADIUS",
+      10,
+      "km",
+      "WITHDIST",
+      "WITHCOORD",
+      "COUNT",
+      10,
+      "ASC"
+    );
+
+    if (closestDrivers.length === 0) {
+      res.status(400).json({
+        status: 400,
+        error: "No Drivers Available",
+        message: "No drivers found within 10km of pickup location.",
+        code: "NO_NEARBY_DRIVERS",
+      });
+      return;
+    }
+
     const [dropoffLon, dropoffLat] = planned_dropoff_coords;
 
     // Call Postgres RPC function to insert ride with geometry points
+    const closestDriver = closestDrivers[0] as GeoSearchResult;
     const { data, error } = await supabase.rpc("ride_insert", {
       p_rider_id: riderData.id,
+      p_driver_id: closestDriver[0],
+      p_status: "requesting_driver",
       p_distance_m: distance_m,
       p_duration_s: duration_s,
       p_vehicle_type: vehicle_type,
@@ -148,9 +180,58 @@ export const createRide = async (
       return;
     }
 
+    // Send notification to the closest driver
+    const { data: driverData } = await supabase
+      .from("drivers")
+      .select("fcm_token")
+      .eq("id", closestDriver[0])
+      .single();
+
+    // Send push notification if FCM token exists
+    if (driverData?.fcm_token) {
+      try {
+        await sendPushNotification(driverData.fcm_token, {
+          title: "New Ride Request",
+          body: `Pickup at ${planned_pickup_address}`,
+          data: {
+            type: "NEW_RIDE_REQUEST",
+            rideId: data.id,
+            pickup: JSON.stringify({
+              coords: planned_pickup_coords,
+              address: planned_pickup_address,
+            }),
+            dropoff: JSON.stringify({
+              coords: planned_dropoff_coords,
+              address: planned_dropoff_address,
+            }),
+          },
+        });
+      } catch (error) {
+        console.error("Failed to send push notification:", error);
+        // Continue execution even if push notification fails
+      }
+    }
+
+    // Also send through WebSocket for real-time updates when app is in foreground
+    await publisher.publish(
+      `driver:${closestDriver[0]}`,
+      JSON.stringify({
+        type: "NEW_RIDE_REQUEST",
+        rideId: data.id,
+        pickup: {
+          coords: planned_pickup_coords,
+          address: planned_pickup_address,
+        },
+        dropoff: {
+          coords: planned_dropoff_coords,
+          address: planned_dropoff_address,
+        },
+      })
+    );
+
     res.status(201).json({
       status: 201,
-      message: "Ride created successfully.",
+      message: "Ride created successfully and driver notified.",
       code: "RIDE_CREATED",
       data,
     });

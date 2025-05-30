@@ -4,7 +4,9 @@ import {
   createProfile,
   updateProfile,
   uploadPicture,
-} from "../controllers/driverConroller";
+  updateFcmToken,
+} from "../controllers/driverController";
+import { authenticateUser } from "../middlewares/authHandler";
 
 const upload = multer();
 const router = express.Router();
@@ -385,5 +387,122 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *                   example: INTERNAL_ERROR
  */
 router.patch("/profile", updateProfile);
+
+/**
+ * @swagger
+ * /drivers/fcm-token:
+ *   patch:
+ *     summary: Update driver's FCM token for push notifications
+ *     tags: [Drivers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fcm_token
+ *             properties:
+ *               fcm_token:
+ *                 type: string
+ *                 description: The FCM token for the driver's device
+ *                 example: "eEpj8-DTQ1234567890:APA91bHyGFqwqw..."
+ *     responses:
+ *       200:
+ *         description: FCM token updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: FCM token updated successfully
+ *                 code:
+ *                   type: string
+ *                   example: FCM_TOKEN_UPDATED
+ *       400:
+ *         description: Bad request (missing or invalid FCM token)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: Bad Request
+ *                 message:
+ *                   type: string
+ *                   example: FCM token is required
+ *                 code:
+ *                   type: string
+ *                   example: FCM_TOKEN_REQUIRED
+ *       401:
+ *         description: Unauthorized (missing or invalid auth token)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: User ID not found in request context.
+ *                 code:
+ *                   type: string
+ *                   example: USER_NOT_FOUND
+ *       404:
+ *         description: Driver not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 error:
+ *                   type: string
+ *                   example: Not Found
+ *                 message:
+ *                   type: string
+ *                   example: Driver not found.
+ *                 code:
+ *                   type: string
+ *                   example: DRIVER_NOT_FOUND
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while updating FCM token.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ */
+router.patch("/fcm-token", authenticateUser, updateFcmToken);
 
 export default router;

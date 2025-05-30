@@ -68,10 +68,10 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: number
- *                 example: [106.827153, -6.175392]
+ *                 example: [106.844747, -6.473081]
  *               planned_pickup_address:
  *                 type: string
- *                 example: "Jl. Medan Merdeka Utara No.3, Jakarta"
+ *                 example: "Puri Nirwana 1 Blok C No. 04, Bogor"
  *               planned_dropoff_coords:
  *                 type: array
  *                 items:
