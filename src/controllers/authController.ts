@@ -119,9 +119,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(401).json({
       status: 401,
       error: "Authentication failed",
-      message: "Invalid email or password.",
+      message: authError.message,
       code: "AUTH_FAILED",
-      details: authError.message,
     });
     return;
   }
