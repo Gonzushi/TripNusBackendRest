@@ -162,7 +162,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   (authData as any).riderId = riderError ? null : riderData?.id ?? null;
   (authData as any).driverId = driverError ? null : driverData?.id ?? null;
   (authData as any).firstName = userError ? null : userData?.first_name ?? null;
-  (authData as any).last_name = userError ? null : userData?.last_name ?? null;
+  (authData as any).lastName = userError ? null : userData?.last_name ?? null;
 
   // 5. Respond with auth data + rider id (or null)
   res.status(200).json({
