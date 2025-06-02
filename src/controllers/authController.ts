@@ -147,22 +147,32 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   const { data: riderData, error: riderError } = await supabase
     .from("riders")
-    .select("id, users!inner(auth_id)")
+    .select("id, users(auth_id)")
     .eq("users.auth_id", authId)
     .single();
 
   const { data: driverData, error: driverError } = await supabase
     .from("drivers")
-    .select("id, users!inner(auth_id)")
+    .select("id, users(auth_id)")
     .eq("users.auth_id", authId)
     .single();
 
   // 4. Attach riderId if found, else null
-  (authData as any).userId = userError ? null : userData?.id ?? null;
-  (authData as any).riderId = riderError ? null : riderData?.id ?? null;
-  (authData as any).driverId = driverError ? null : driverData?.id ?? null;
-  (authData as any).firstName = userError ? null : userData?.first_name ?? null;
-  (authData as any).lastName = userError ? null : userData?.last_name ?? null;
+  (authData as any).userId = userData?.id || null;
+  (authData as any).riderId = riderData?.id || null;
+  (authData as any).driverId = driverData?.id || null;
+  (authData as any).firstName = userData?.first_name || null;
+  (authData as any).lastName = userData?.last_name || null;
+
+  if (userError) {
+    console.error("User fetch error:", userError);
+  }
+  if (riderError) {
+    console.error("Rider fetch error:", riderError);
+  }
+  if (driverError) {
+    console.error("Driver fetch error:", driverError);
+  }
 
   // 5. Respond with auth data + rider id (or null)
   res.status(200).json({
