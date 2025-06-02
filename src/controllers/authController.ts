@@ -316,15 +316,20 @@ export const changePassword = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const userId = req.user?.sub;
-  const { password } = req.body;
+  const { type, tokenHash, password } = req.body;
 
-  if (!userId) {
-    res.status(401).json({
-      status: 401,
-      error: "Unauthorized",
-      message: "User ID not found in request context.",
-      code: "USER_NOT_FOUND",
+  const { data: recoveryData, error: recoveryError } = await supabase.auth.verifyOtp({
+    type,
+    token_hash: tokenHash,
+  });
+
+
+  if (recoveryError) {
+    res.status(403).json({
+      status: 403,
+      error: "Unable to verify OTP",
+      message: recoveryError.message,
+      code: "OTP_EXPIRED",
     });
     return;
   }
@@ -340,7 +345,7 @@ export const changePassword = async (
   }
 
   try {
-    const { error } = await supabase.auth.admin.updateUserById(userId, {
+    const { error } = await supabase.auth.admin.updateUserById(recoveryData?.user?.id!, {
       password,
     });
 

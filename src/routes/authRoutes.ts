@@ -557,22 +557,30 @@ router.post("/reset-password-for-email", resetPasswordForEmail);
  * @swagger
  * /auth/change-password:
  *   post:
- *     summary: Change user password
- *     description: Update the authenticated user's password. Requires Bearer token authentication.
+ *     summary: Change user password using OTP verification
+ *     description: Update user's password using a valid OTP token from the reset password flow
  *     tags:
  *       - Auth
- *     security:
- *       - bearerAuth: []
+ *     security: []
  *     requestBody:
- *       description: New password payload
+ *       description: Password change payload with OTP verification
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
  *             required:
+ *               - type
+ *               - tokenHash
  *               - password
  *             properties:
+ *               type:
+ *                 type: string
+ *                 example: recovery
+ *               tokenHash:
+ *                 type: string
+ *                 description: The token hash from the reset password URL
+ *                 example: abcdef123456
  *               password:
  *                 type: string
  *                 example: Password123456789!
@@ -605,15 +613,15 @@ router.post("/reset-password-for-email", resetPasswordForEmail);
  *                   example: 400
  *                 error:
  *                   type: string
- *                   example: Bad Request
+ *                   example: Update Failed
  *                 message:
  *                   type: string
- *                   example: Password is required and must be a string.
+ *                   example: Invalid password format
  *                 code:
  *                   type: string
- *                   example: PASSWORD_REQUIRED
- *       401:
- *         description: Unauthorized, missing or invalid token
+ *                   example: UPDATE_PASSWORD_FAILED
+ *       403:
+ *         description: Invalid or expired OTP token
  *         content:
  *           application/json:
  *             schema:
@@ -621,16 +629,16 @@ router.post("/reset-password-for-email", resetPasswordForEmail);
  *               properties:
  *                 status:
  *                   type: integer
- *                   example: 401
+ *                   example: 403
  *                 error:
  *                   type: string
- *                   example: Unauthorized
+ *                   example: Unable to verify OTP
  *                 message:
  *                   type: string
- *                   example: User ID not found in request context.
+ *                   example: Invalid or expired recovery token
  *                 code:
  *                   type: string
- *                   example: USER_NOT_FOUND
+ *                   example: OTP_EXPIRED
  *       500:
  *         description: Server error during password update
  *         content:
@@ -651,7 +659,7 @@ router.post("/reset-password-for-email", resetPasswordForEmail);
  *                   type: string
  *                   example: INTERNAL_ERROR
  */
-router.post("/change-password", authenticateUser, changePassword);
+router.post("/change-password", changePassword);
 
 /**
  * @swagger
