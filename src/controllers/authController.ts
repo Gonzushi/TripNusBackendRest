@@ -318,11 +318,11 @@ export const changePassword = async (
 ): Promise<void> => {
   const { type, tokenHash, password } = req.body;
 
-  const { data: recoveryData, error: recoveryError } = await supabase.auth.verifyOtp({
-    type,
-    token_hash: tokenHash,
-  });
-
+  const { data: recoveryData, error: recoveryError } =
+    await supabase.auth.verifyOtp({
+      type,
+      token_hash: tokenHash,
+    });
 
   if (recoveryError) {
     res.status(403).json({
@@ -345,9 +345,12 @@ export const changePassword = async (
   }
 
   try {
-    const { error } = await supabase.auth.admin.updateUserById(recoveryData?.user?.id!, {
-      password,
-    });
+    const { error } = await supabase.auth.admin.updateUserById(
+      recoveryData?.user?.id!,
+      {
+        password,
+      }
+    );
 
     if (error) {
       res.status(400).json({

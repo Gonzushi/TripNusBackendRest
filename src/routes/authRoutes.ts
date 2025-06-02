@@ -716,7 +716,6 @@ router.post("/change-password", changePassword);
  *                   type: string
  *                   example: AUTH_HEADER_MISSING
  */
-
 router.get("/jwt-checker", authenticateUser, jwtChecker);
 
 export default router;
