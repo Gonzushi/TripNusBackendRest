@@ -8,7 +8,7 @@ export const updateProfile = async (
 ): Promise<void> => {
   const authId = req.user?.sub;
   const { first_name, last_name } = req.body;
-  
+
   if (!authId) {
     res.status(401).json({
       status: 401,

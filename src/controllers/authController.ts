@@ -108,68 +108,95 @@ export const resendActivation = async (
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
-  // 1. Authenticate user with email and password
-  const { data: authData, error: authError } =
-    await supabaseAnon.auth.signInWithPassword({
-      email,
-      password,
+  try {
+    // 1. Authenticate user with email and password
+    const { data: authData, error: authError } =
+      await supabaseAnon.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+    if (authError) {
+      res.status(401).json({
+        status: 401,
+        error: "Authentication failed",
+        message: authError.message,
+        code: "AUTH_FAILED",
+      });
+      return;
+    }
+
+    // 2. Get authId from authenticated user
+    const authId = authData.user?.id;
+
+    if (!authId) {
+      res.status(401).json({
+        status: 401,
+        error: "Authentication failed",
+        message: "Authenticated user ID not found.",
+        code: "AUTH_ID_NOT_FOUND",
+      });
+      return;
+    }
+
+    // 3. First get the user data
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id, first_name, last_name")
+      .eq("auth_id", authId)
+      .single();
+
+    if (userError) {
+      console.error("User fetch error:", userError);
+      res.status(500).json({
+        status: 500,
+        error: "Database error",
+        message: "Error fetching user data",
+        code: "DB_ERROR",
+      });
+      return;
+    }
+
+    // 4. Then get rider data in a separate query
+    const { data: riderData } = await supabase
+      .from("riders")
+      .select("id")
+      .eq("user_id", userData.id)
+      .single();
+
+    // 5. Get driver data in a separate query
+    const { data: driverData } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("user_id", userData.id)
+      .single();
+
+    // 6. Combine all data
+    const responseData = {
+      ...authData,
+      userId: userData.id,
+      firstName: userData.first_name,
+      lastName: userData.last_name,
+      riderId: riderData?.id || null,
+      driverId: driverData?.id || null,
+    };
+
+    // 7. Respond with combined data
+    res.status(200).json({
+      status: 200,
+      message: "Login successful.",
+      code: "LOGIN_SUCCESS",
+      data: responseData,
     });
-
-  if (authError) {
-    res.status(401).json({
-      status: 401,
-      error: "Authentication failed",
-      message: authError.message,
-      code: "AUTH_FAILED",
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({
+      status: 500,
+      error: "Server error",
+      message: "An unexpected error occurred",
+      code: "SERVER_ERROR",
     });
-    return;
   }
-
-  // 2. Get authId from authenticated user
-  const authId = authData.user?.id;
-
-  if (!authId) {
-    res.status(401).json({
-      status: 401,
-      error: "Authentication failed",
-      message: "Authenticated user ID not found.",
-      code: "AUTH_ID_NOT_FOUND",
-    });
-    return;
-  }
-
-  // 3. Try to fetch rider id and driver id based on authId relation
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select(
-      `
-    id,
-    first_name,
-    last_name,
-    riders(id),
-    drivers(id)
-  `
-    )
-    .eq("auth_id", authId)
-    .single();
-
-  (authData as any).userId = userData?.id || null;
-  (authData as any).firstName = userData?.first_name || null;
-  (authData as any).lastName = userData?.last_name || null;
-  (authData as any).riderId = userData?.riders[0]?.id || null;
-  (authData as any).driverId = userData?.drivers[0]?.id || null;
-
-  if (userError) {
-    console.error("User fetch error:", userError);
-  }
-
-  // 5. Respond with auth data + rider id (or null)
-  res.status(200).json({
-    status: 200,
-    message: "Login successful.",
-    code: "LOGIN_SUCCESS",
-    data: authData,
-  });
 };
 
 // Refresh Token
