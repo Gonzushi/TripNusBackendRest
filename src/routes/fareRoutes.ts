@@ -7,7 +7,7 @@ const router = express.Router();
  * @swagger
  * /fare/calculate:
  *   post:
- *     summary: Calculate fare for a ride
+ *     summary: Calculate fare for a ride based on distance and duration
  *     tags: [Fare]
  *     security:
  *       - bearerAuth: []
@@ -18,31 +18,17 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             required:
- *               - plannedPickupCoords
- *               - plannedPickupAddress
- *               - plannedDropoffCoords
- *               - plannedDropoffAddress
+ *               - distanceKm
+ *               - durationMin
  *             properties:
- *               plannedPickupCoords:
- *                 type: array
- *                 items:
- *                   type: number
- *                 description: "[longitude, latitude] of pickup location"
- *                 example: [106.844877, -6.473127]
- *               plannedPickupAddress:
- *                 type: string
- *                 description: Full address of the pickup location
- *                 example: "Jl. Raya Cibubur No.1, Jakarta"
- *               plannedDropoffCoords:
- *                 type: array
- *                 items:
- *                   type: number
- *                 description: "[longitude, latitude] of dropoff location"
- *                 example: [106.841782, -6.484847]
- *               plannedDropoffAddress:
- *                 type: string
- *                 description: Full address of the dropoff location
- *                 example: "Jl. Raya Bogor No.2, Jakarta"
+ *               distanceKm:
+ *                 type: number
+ *                 description: Distance in kilometers
+ *                 example: 6.5
+ *               durationMin:
+ *                 type: number
+ *                 description: Duration in minutes
+ *                 example: 15
  *     responses:
  *       200:
  *         description: Fare calculated successfully
@@ -63,93 +49,78 @@ const router = express.Router();
  *                 data:
  *                   type: object
  *                   properties:
- *                     planned_pickup_coords:
- *                       type: array
- *                       items:
- *                         type: number
- *                       example: [106.844877, -6.473127]
- *                     planned_pickup_address:
- *                       type: string
- *                       example: "Jl. Raya Cibubur No.1, Jakarta"
- *                     planned_dropoff_coords:
- *                       type: array
- *                       items:
- *                         type: number
- *                       example: [106.841782, -6.484847]
- *                     planned_dropoff_address:
- *                       type: string
- *                       example: "Jl. Raya Bogor No.2, Jakarta"
- *                     distance_m:
- *                       type: number
- *                       description: Distance in meters
- *                       example: 6500
- *                     duration_s:
- *                       type: number
- *                       description: Duration in seconds
- *                       example: 900
- *                     fare:
+ *                     car:
  *                       type: object
  *                       properties:
- *                         car:
+ *                         service_variant:
+ *                           type: string
+ *                           example: standard
+ *                         fare_breakdown:
  *                           type: object
  *                           properties:
- *                             service_variant:
- *                               type: string
- *                               example: standard
- *                             fare_breakdown:
- *                               type: object
- *                               properties:
- *                                 base_fare:
- *                                   type: number
- *                                   example: 5000
- *                                 distance_fare:
- *                                   type: number
- *                                   example: 19500
- *                                 duration_fare:
- *                                   type: number
- *                                   example: 7500
- *                                 rounding_adjustment:
- *                                   type: number
- *                                   example: 0
- *                             total_fare:
+ *                             base_fare:
  *                               type: number
- *                               example: 32000
- *                             app_commission:
+ *                               example: 5000
+ *                             distance_fare:
  *                               type: number
- *                               example: 5600
- *                             driver_earning:
+ *                               example: 19500
+ *                             duration_fare:
  *                               type: number
- *                               example: 26400
- *                         motorcycle:
+ *                               example: 7500
+ *                             rounding_adjustment:
+ *                               type: number
+ *                               example: 0
+ *                             platform_fee:
+ *                               type: number
+ *                               example: 2000
+ *                         total_fare:
+ *                           type: number
+ *                           example: 34000
+ *                         platform_fee:
+ *                           type: number
+ *                           example: 2000
+ *                         app_commission:
+ *                           type: number
+ *                           example: 5600
+ *                         driver_earning:
+ *                           type: number
+ *                           example: 26400
+ *                     motorcycle:
+ *                       type: object
+ *                       properties:
+ *                         service_variant:
+ *                           type: string
+ *                           example: standard
+ *                         fare_breakdown:
  *                           type: object
  *                           properties:
- *                             service_variant:
- *                               type: string
- *                               example: standard
- *                             fare_breakdown:
- *                               type: object
- *                               properties:
- *                                 base_fare:
- *                                   type: number
- *                                   example: 3000
- *                                 distance_fare:
- *                                   type: number
- *                                   example: 13000
- *                                 duration_fare:
- *                                   type: number
- *                                   example: 4500
- *                                 rounding_adjustment:
- *                                   type: number
- *                                   example: 0
- *                             total_fare:
+ *                             base_fare:
  *                               type: number
- *                               example: 20500
- *                             app_commission:
+ *                               example: 3000
+ *                             distance_fare:
  *                               type: number
- *                               example: 3588
- *                             driver_earning:
+ *                               example: 13000
+ *                             duration_fare:
  *                               type: number
- *                               example: 16912
+ *                               example: 4500
+ *                             rounding_adjustment:
+ *                               type: number
+ *                               example: 0
+ *                             platform_fee:
+ *                               type: number
+ *                               example: 2000
+ *                         total_fare:
+ *                           type: number
+ *                           example: 22500
+ *                         platform_fee:
+ *                           type: number
+ *                           example: 2000
+ *                         app_commission:
+ *                           type: number
+ *                           example: 3588
+ *                         driver_earning:
+ *                           type: number
+ *                           example: 16912
  *       400:
  *         description: Bad request
  *         content:
@@ -165,10 +136,10 @@ const router = express.Router();
  *                   example: Bad Request
  *                 message:
  *                   type: string
- *                   example: pickpoint and dropoff must be arrays of two valid numbers [lng, lat]
+ *                   example: Distance and duration are required and must be valid numbers
  *                 code:
  *                   type: string
- *                   example: INVALID_COORDINATES
+ *                   example: INVALID_PARAMETERS
  *       500:
  *         description: Server error
  *         content:

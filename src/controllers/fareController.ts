@@ -14,9 +14,8 @@ interface MapboxResponse {
 }
 
 // Fare calculation
-function calculateFareLogic(distanceMeters: number, durationSeconds: number) {
-  const distanceKm = distanceMeters / 1000;
-  const durationMin = durationSeconds / 60;
+function calculateFareLogic(distanceKm: number, durationMin: number) {
+  const platformFee = 2000;
 
   // --- Car fare calculation ---
   const carBaseFare = 5000;
@@ -25,10 +24,11 @@ function calculateFareLogic(distanceMeters: number, durationSeconds: number) {
   const carDistanceFare = carPerKm * distanceKm;
   const carDurationFare = carPerMin * durationMin;
   const carRawTotal = carBaseFare + carDistanceFare + carDurationFare;
-  const carRoundedTotal = Math.ceil(carRawTotal / 1000) * 1000;
-  const carRoundingAdjustment = carRoundedTotal - carRawTotal;
-  const carAppCommission = carRoundedTotal * 0.175;
-  const carDriverEarning = carRoundedTotal - carAppCommission;
+  const carFare = Math.ceil(carRawTotal / 1000) * 1000;
+  const carRoundingAdjustment = carFare - carRawTotal;
+  const carTotalFare = carFare + platformFee;
+  const carAppCommission = carFare * 0.175;
+  const carDriverEarning = carFare - carAppCommission;
 
   // --- Motorcycle fare calculation ---
   const motorBaseFare = 3000;
@@ -37,10 +37,11 @@ function calculateFareLogic(distanceMeters: number, durationSeconds: number) {
   const motorDistanceFare = motorPerKm * distanceKm;
   const motorDurationFare = motorPerMin * durationMin;
   const motorRawTotal = motorBaseFare + motorDistanceFare + motorDurationFare;
-  const motorRoundedTotal = Math.ceil(motorRawTotal / 1000) * 1000;
-  const motorRoundingAdjustment = motorRoundedTotal - motorRawTotal;
-  const motorAppCommission = motorRoundedTotal * 0.175;
-  const motorDriverEarning = motorRoundedTotal - motorAppCommission;
+  const motorFare = Math.ceil(motorRawTotal / 1000) * 1000;
+  const motorRoundingAdjustment = motorFare - motorRawTotal;
+  const motorTotalFare = motorFare + platformFee;
+  const motorAppCommission = motorFare * 0.175;
+  const motorDriverEarning = motorFare - motorAppCommission;
 
   return {
     car: {
@@ -50,8 +51,10 @@ function calculateFareLogic(distanceMeters: number, durationSeconds: number) {
         distance_fare: Math.round(carDistanceFare),
         duration_fare: Math.round(carDurationFare),
         rounding_adjustment: Math.round(carRoundingAdjustment),
+        platform_fee: Math.round(platformFee),
       },
-      total_fare: Math.round(carRoundedTotal),
+      total_fare: Math.round(carTotalFare),
+      platform_fee: Math.round(platformFee),
       app_commission: Math.round(carAppCommission),
       driver_earning: Math.round(carDriverEarning),
     },
@@ -62,8 +65,10 @@ function calculateFareLogic(distanceMeters: number, durationSeconds: number) {
         distance_fare: Math.round(motorDistanceFare),
         duration_fare: Math.round(motorDurationFare),
         rounding_adjustment: Math.round(motorRoundingAdjustment),
+        platform_fee: Math.round(platformFee),
       },
-      total_fare: Math.round(motorRoundedTotal),
+      total_fare: Math.round(motorTotalFare),
+      platform_fee: Math.round(platformFee),
       app_commission: Math.round(motorAppCommission),
       driver_earning: Math.round(motorDriverEarning),
     },
@@ -75,64 +80,15 @@ export const calculateFare = async (
   res: Response
 ): Promise<void> => {
   try {
-    const {
-      plannedPickupCoords,
-      plannedPickupAddress,
-      plannedDropoffCoords,
-      plannedDropoffAddress,
-    } = req.body;
+    const { distanceKm, durationMin } = req.body;
 
-    // Validate coordinates
-    if (
-      !Array.isArray(plannedPickupCoords) ||
-      !Array.isArray(plannedDropoffCoords) ||
-      plannedPickupCoords.length !== 2 ||
-      plannedDropoffCoords.length !== 2 ||
-      !plannedPickupCoords.every((coord) => typeof coord === "number") ||
-      !plannedDropoffCoords.every((coord) => typeof coord === "number")
-    ) {
-      res.status(400).json({
-        status: 400,
-        error: "Bad Request",
-        message:
-          "pickpoint and dropoff must be arrays of two valid numbers [lng, lat]",
-        code: "INVALID_COORDINATES",
-      });
-      return;
-    }
-
-    const coordinates = `${plannedPickupCoords[0]},${plannedPickupCoords[1]};${plannedDropoffCoords[0]},${plannedDropoffCoords[1]}`;
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?alternatives=false&annotations=distance,duration&geometries=geojson&language=en&overview=full&steps=false&access_token=${MAPBOX_TOKEN}`;
-
-    const response = await axios.get<MapboxResponse>(url);
-
-    if (response.status !== 200 || response.data.code !== "Ok") {
-      res.status(500).json({
-        status: 500,
-        error: "Routing Error",
-        message: "Failed to get a valid route from Mapbox.",
-        code: "MAPBOX_ERROR",
-        details: response.data,
-      });
-      return;
-    }
-
-    const { distance, duration } = response.data.routes[0];
-    const fare = calculateFareLogic(distance, duration);
+    const fare = calculateFareLogic(distanceKm, durationMin);
 
     res.status(200).json({
       status: 200,
       code: "FARE_CALCULATED",
       message: "Fare calculated successfully.",
-      data: {
-        planned_pickup_coords: plannedPickupCoords,
-        planned_pickup_address: plannedPickupAddress,
-        planned_dropoff_coords: plannedDropoffCoords,
-        planned_dropoff_address: plannedDropoffAddress,
-        distance_m: distance, // in meters
-        duration_s: duration, // in seconds
-        fare,
-      },
+      data: fare
     });
     return;
   } catch (error: any) {
