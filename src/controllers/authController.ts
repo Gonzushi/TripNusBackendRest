@@ -1,6 +1,14 @@
 import { Request, Response } from "express";
 import supabase, { supabaseAnon } from "../supabaseClient";
 
+interface UserInfo {
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  rider_id: string | null;
+  driver_id: string | null;
+}
+
 // Register a new user
 export const register = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
@@ -126,7 +134,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 2. Get authId from authenticated user
     const authId = authData.user?.id;
 
     if (!authId) {
@@ -139,49 +146,33 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 3. First get the user data
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("id, first_name, last_name")
-      .eq("auth_id", authId)
-      .single();
+    // 2. Call the RPC to get user, rider, and driver info
+    const { data: userInfo, error: rpcError } = (await supabase
+      .rpc("get_user_by_auth_id", { p_auth_id: authId })
+      .single()) as { data: UserInfo | null; error: any };
 
-    if (userError) {
-      console.error("User fetch error:", userError);
+    if (rpcError || !userInfo) {
+      console.error("RPC error:", rpcError);
       res.status(500).json({
         status: 500,
         error: "Database error",
-        message: "Error fetching user data",
-        code: "DB_ERROR",
+        message: "Error fetching user info via RPC",
+        code: "RPC_ERROR",
       });
       return;
     }
 
-    // 4. Then get rider data in a separate query
-    const { data: riderData } = await supabase
-      .from("riders")
-      .select("id")
-      .eq("user_id", userData.id)
-      .single();
-
-    // 5. Get driver data in a separate query
-    const { data: driverData } = await supabase
-      .from("drivers")
-      .select("id")
-      .eq("user_id", userData.id)
-      .single();
-
-    // 6. Combine all data
+    // 3. Combine with authData
     const responseData = {
       ...authData,
-      userId: userData.id,
-      firstName: userData.first_name,
-      lastName: userData.last_name,
-      riderId: riderData?.id || null,
-      driverId: driverData?.id || null,
+      userId: userInfo.user_id,
+      firstName: userInfo.first_name,
+      lastName: userInfo.last_name,
+      riderId: userInfo.rider_id || null,
+      driverId: userInfo.driver_id || null,
     };
 
-    // 7. Respond with combined data
+    // 4. Respond with success
     res.status(200).json({
       status: 200,
       message: "Login successful.",
