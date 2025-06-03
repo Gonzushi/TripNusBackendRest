@@ -27,6 +27,7 @@ const router = express.Router();
  *               - vehicle_type
  *               - service_variant
  *               - fare
+ *               - platform_fee
  *               - driver_earning
  *               - app_commission
  *               - fare_breakdown
@@ -50,6 +51,9 @@ const router = express.Router();
  *               fare:
  *                 type: number
  *                 example: 30000
+ *               platform_fee:
+ *                 type: number
+ *                 example: 2000
  *               driver_earning:
  *                 type: number
  *                 example: 24000
