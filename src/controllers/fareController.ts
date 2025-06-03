@@ -14,7 +14,10 @@ interface MapboxResponse {
 }
 
 // Fare calculation
-function calculateFareLogic(distanceKm: number, durationMin: number) {
+function calculateFareLogic(distanceM: number, durationSec: number) {
+  const distanceKm = distanceM / 1000;
+  const durationMin = durationSec / 60;
+
   const platformFee = 2000;
 
   // --- Car fare calculation ---
@@ -80,9 +83,9 @@ export const calculateFare = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { distanceKm, durationMin } = req.body;
+    const { distanceM, durationSec } = req.body;
 
-    const fare = calculateFareLogic(distanceKm, durationMin);
+    const fare = calculateFareLogic(distanceM, durationSec);
 
     res.status(200).json({
       status: 200,

@@ -18,17 +18,17 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             required:
- *               - distanceKm
- *               - durationMin
+ *               - distanceM
+ *               - durationSec
  *             properties:
- *               distanceKm:
+ *               distanceM:
  *                 type: number
- *                 description: Distance in kilometers
- *                 example: 6.5
- *               durationMin:
+ *                 description: Distance in meters
+ *                 example: 6500
+ *               durationSec:
  *                 type: number
- *                 description: Duration in minutes
- *                 example: 15
+ *                 description: Duration in seconds
+ *                 example: 900
  *     responses:
  *       200:
  *         description: Fare calculated successfully
