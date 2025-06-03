@@ -6,7 +6,9 @@ interface UserInfo {
   first_name: string | null;
   last_name: string | null;
   rider_id: string | null;
+  rider_profile_picture_url: string | null;
   driver_id: string | null;
+  driver_profile_picture_url: string | null;
 }
 
 // Register a new user
@@ -169,7 +171,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       firstName: userInfo.first_name,
       lastName: userInfo.last_name,
       riderId: userInfo.rider_id || null,
+      riderProfilePictureUrl: userInfo.rider_profile_picture_url || null,
       driverId: userInfo.driver_id || null,
+      driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
     };
 
     // 4. Respond with success
