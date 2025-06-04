@@ -7,6 +7,7 @@ import {
   logout,
   resetPasswordForEmail,
   changePassword,
+  updatePhoneNumber,
   jwtChecker,
 } from "../controllers/authController";
 
@@ -660,6 +661,108 @@ router.post("/reset-password-for-email", resetPasswordForEmail);
  *                   example: INTERNAL_ERROR
  */
 router.post("/change-password", changePassword);
+
+/**
+ * @swagger
+ * /auth/update-phone:
+ *   post:
+ *     summary: Update the authenticated user's phone number
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phone
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 description: The new phone number in international format (e.g., +628123456789)
+ *                 example: "+628123456789"
+ *     responses:
+ *       200:
+ *         description: Phone number updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Phone number updated successfully.
+ *                 code:
+ *                   type: string
+ *                   example: UPDATE_PHONE_SUCCESS
+ *                 user:
+ *                   type: object
+ *                   description: The updated user object from Supabase
+ *       400:
+ *         description: Missing parameters or update failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: Update failed
+ *                 message:
+ *                   type: string
+ *                   example: Invalid phone format or missing parameters
+ *                 code:
+ *                   type: string
+ *                   example: UPDATE_PHONE_FAILED
+ *       401:
+ *         description: Unauthorized - user not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: Authorization header missing or invalid
+ *                 code:
+ *                   type: string
+ *                   example: AUTH_HEADER_MISSING
+ *       500:
+ *         description: Server error while updating phone number
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while updating phone number.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ */
+router.post("/update-phone", authenticateUser, updatePhoneNumber);
+
 
 /**
  * @swagger

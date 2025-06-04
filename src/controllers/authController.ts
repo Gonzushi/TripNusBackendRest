@@ -5,6 +5,7 @@ interface UserInfo {
   user_id: string;
   first_name: string | null;
   last_name: string | null;
+  phone: string | null;
   rider_id: string | null;
   rider_profile_picture_url: string | null;
   driver_id: string | null;
@@ -170,6 +171,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       userId: userInfo.user_id,
       firstName: userInfo.first_name,
       lastName: userInfo.last_name,
+      phone: userInfo.phone || null,
       riderId: userInfo.rider_id || null,
       riderProfilePictureUrl: userInfo.rider_profile_picture_url || null,
       driverId: userInfo.driver_id || null,
@@ -381,6 +383,53 @@ export const changePassword = async (
   }
 };
 
+// Update phone number using user ID (auth id)
+export const updatePhoneNumber = async (req: Request, res: Response): Promise<void> => {
+  const authId = req.user?.sub;
+  const { phone } = req.body;
+
+  if (!authId || !phone) {
+    res.status(400).json({
+      status: 400,
+      error: "Bad Request",
+      message: "Missing userId or phone in request body.",
+      code: "MISSING_PARAMETERS",
+    });
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.admin.updateUserById(authId, {
+      phone,
+    });
+
+    if (error) {
+      res.status(400).json({
+        status: 400,
+        error: "Update failed",
+        message: error.message,
+        code: "UPDATE_PHONE_FAILED",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: "Phone number updated successfully.",
+      code: "UPDATE_PHONE_SUCCESS",
+      user: data,
+    });
+  } catch (err) {
+    console.error("Unexpected error updating phone:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while updating phone number.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};
+
 // JWT Checker
 export const jwtChecker = (req: Request, res: Response): void => {
   if (!req.user) {
@@ -400,3 +449,5 @@ export const jwtChecker = (req: Request, res: Response): void => {
     data: req.user,
   });
 };
+
+
