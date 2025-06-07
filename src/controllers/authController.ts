@@ -177,6 +177,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       riderProfilePictureUrl: userInfo.rider_profile_picture_url || null,
       driverId: userInfo.driver_id || null,
       driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
+      driverStatus: userInfo.driver_id || null,
     };
 
     // 4. Respond with success
@@ -215,9 +216,10 @@ export const refreshToken = async (
   }
 
   try {
-    const { data: authData, error: authError } = await supabase.auth.refreshSession({
-      refresh_token: refresh_token,
-    });
+    const { data: authData, error: authError } =
+      await supabase.auth.refreshSession({
+        refresh_token: refresh_token,
+      });
 
     if (authError) {
       res.status(401).json({
@@ -254,6 +256,7 @@ export const refreshToken = async (
       riderProfilePictureUrl: userInfo.rider_profile_picture_url || null,
       driverId: userInfo.driver_id || null,
       driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
+      driverStatus: userInfo.driver_id || null,
     };
 
     res.status(200).json({

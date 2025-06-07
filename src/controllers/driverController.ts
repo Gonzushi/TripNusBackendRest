@@ -135,6 +135,10 @@ export const uploadPicture = async (
       pathPrefix: "driver-profile-pictures",
       updateField: "profile_picture_url",
     },
+    stnk: {
+      pathPrefix: "stnk-pictures",
+      updateField: "vehicle_registration_photo_url",
+    },
   };
 
   if (!photoType || !(photoType in allowedTypes)) {

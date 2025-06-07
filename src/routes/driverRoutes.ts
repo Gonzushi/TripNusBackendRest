@@ -115,7 +115,7 @@ router.post("/profile", createProfile);
  * @swagger
  * /driver/picture:
  *   patch:
- *     summary: Upload driver photo (profile picture, KTP, or driver license)
+ *     summary: Upload driver photo (profile picture, KTP, driver license, or STNK)
  *     tags: [Driver]
  *     security:
  *       - bearerAuth: []
@@ -135,7 +135,7 @@ router.post("/profile", createProfile);
  *                 description: Image file to upload
  *               photoType:
  *                 type: string
- *                 enum: [profile, ktp, license]
+ *                 enum: [profile, ktp, license, stnk]
  *                 description: Type of photo being uploaded
  *     responses:
  *       200:
