@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import supabase, { supabaseAnon } from "../supabaseClient";
+import { auth } from "firebase-admin";
 
 interface UserInfo {
   user_id: string;
@@ -214,24 +215,52 @@ export const refreshToken = async (
   }
 
   try {
-    const { data, error } = await supabase.auth.refreshSession({
+    const { data: authData, error: authError } = await supabase.auth.refreshSession({
       refresh_token: refresh_token,
     });
 
-    if (error) {
+    if (authError) {
       res.status(401).json({
         status: 401,
         error: "Unauthorized",
-        message: error.message,
+        message: authError.message,
         code: "INVALID_REFRESH_TOKEN",
       });
       return;
     }
+
+    const { data: userInfo, error: rpcError } = (await supabase
+      .rpc("get_user_by_auth_id", { p_auth_id: authData.user?.id })
+      .single()) as { data: UserInfo | null; error: any };
+
+    if (rpcError || !userInfo) {
+      console.error("RPC error:", rpcError);
+      res.status(500).json({
+        status: 500,
+        error: "Database error",
+        message: "Error fetching user info via RPC",
+        code: "RPC_ERROR",
+      });
+      return;
+    }
+
+    const responseData = {
+      ...authData,
+      userId: userInfo.user_id,
+      firstName: userInfo.first_name,
+      lastName: userInfo.last_name,
+      phone: userInfo.phone || null,
+      riderId: userInfo.rider_id || null,
+      riderProfilePictureUrl: userInfo.rider_profile_picture_url || null,
+      driverId: userInfo.driver_id || null,
+      driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
+    };
+
     res.status(200).json({
       status: 200,
       message: "Access token refreshed successfully",
       code: "REFRESH_SUCCESS",
-      data,
+      data: responseData,
     });
   } catch (err) {
     res.status(500).json({
@@ -384,7 +413,10 @@ export const changePassword = async (
 };
 
 // Update phone number using user ID (auth id)
-export const updatePhoneNumber = async (req: Request, res: Response): Promise<void> => {
+export const updatePhoneNumber = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   const authId = req.user?.sub;
   const { phone } = req.body;
 
@@ -449,5 +481,3 @@ export const jwtChecker = (req: Request, res: Response): void => {
     data: req.user,
   });
 };
-
-
