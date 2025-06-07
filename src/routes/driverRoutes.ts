@@ -291,6 +291,8 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *                 type: string
  *               vehicle_type:
  *                 type: string
+ *              vehicle_registration_no:
+ *                type: string
  *     responses:
  *       200:
  *         description: Driver profile updated successfully

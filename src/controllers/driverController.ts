@@ -248,6 +248,7 @@ export const updateProfile = async (
     "vehicle_model",
     "vehicle_plate_number",
     "vehicle_type",
+    "vehicle_registration_no"
   ];
 
   if (!authId) {
