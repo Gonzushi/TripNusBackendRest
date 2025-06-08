@@ -270,17 +270,24 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *                 type: string
  *               last_name:
  *                 type: string
+ *               sex:
+ *                 type: string
+ *               date_of_birth:
+ *                 type: string
+ *                 format: date
  *               address_line1:
  *                 type: string
  *               address_line2:
  *                 type: string
  *               city:
  *                 type: string
+ *               driver_license_class:
+ *                type: string
+ *               driver_license_number:
+ *                 type: string
  *               driver_license_expiration:
  *                 type: string
  *                 format: date
- *               driver_license_number:
- *                 type: string
  *               ktp_id:
  *                 type: string
  *               postal_code:
