@@ -310,6 +310,10 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *                 type: string
  *              push_token:
  *                 type: string
+ *              status_success_confirmed:
+ *                type: string
+ *              notes:
+ *                type: string
  *     responses:
  *       200:
  *         description: Driver profile updated successfully
