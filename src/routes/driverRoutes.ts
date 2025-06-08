@@ -266,6 +266,10 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *           schema:
  *             type: object
  *             properties:
+ *               first_name:
+ *                 type: string
+ *               last_name:
+ *                 type: string
  *               address_line1:
  *                 type: string
  *               address_line2:
@@ -292,7 +296,11 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *               vehicle_type:
  *                 type: string
  *              vehicle_registration_no:
- *                type: string
+ *                 type: string
+ *              status:
+ *                 type: string
+ *              push_token:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Driver profile updated successfully

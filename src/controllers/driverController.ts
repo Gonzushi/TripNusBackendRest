@@ -240,6 +240,8 @@ export const updateProfile = async (
   const authId = req.user?.sub;
 
   const updateFields = [
+    "first_name",
+    "last_name",
     "address_line1",
     "address_line2",
     "city",
@@ -252,7 +254,9 @@ export const updateProfile = async (
     "vehicle_model",
     "vehicle_plate_number",
     "vehicle_type",
-    "vehicle_registration_no"
+    "vehicle_registration_no",
+    "status",
+    "push_token"
   ];
 
   if (!authId) {

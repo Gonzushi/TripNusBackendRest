@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import supabase, { supabaseAnon } from "../supabaseClient";
-import { auth } from "firebase-admin";
 
-interface UserInfo {
+type UserInfo = {
   user_id: string;
   first_name: string | null;
   last_name: string | null;
@@ -10,8 +9,11 @@ interface UserInfo {
   rider_id: string | null;
   rider_profile_picture_url: string | null;
   driver_id: string | null;
+  driver_first_name: string | null;
+  driver_last_name: string | null;
   driver_profile_picture_url: string | null;
-}
+  driver_status: string | null;
+};
 
 // Register a new user
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -176,8 +178,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       riderId: userInfo.rider_id || null,
       riderProfilePictureUrl: userInfo.rider_profile_picture_url || null,
       driverId: userInfo.driver_id || null,
+      driverFirstName: userInfo.driver_first_name || null,
+      driverLastName: userInfo.driver_last_name || null,
       driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
-      driverStatus: userInfo.driver_id || null,
+      driverStatus: userInfo.driver_status || null,
     };
 
     // 4. Respond with success
@@ -255,8 +259,10 @@ export const refreshToken = async (
       riderId: userInfo.rider_id || null,
       riderProfilePictureUrl: userInfo.rider_profile_picture_url || null,
       driverId: userInfo.driver_id || null,
+      driverFirstName: userInfo.driver_first_name || null,
+      driverLastName: userInfo.driver_last_name || null,
       driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
-      driverStatus: userInfo.driver_id || null,
+      driverStatus: userInfo.driver_status || null,
     };
 
     res.status(200).json({
