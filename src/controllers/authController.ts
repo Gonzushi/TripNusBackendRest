@@ -13,6 +13,8 @@ type UserInfo = {
   driver_last_name: string | null;
   driver_profile_picture_url: string | null;
   driver_status: string | null;
+  driver_status_success_confirmed: string | null;
+  driver_notes: string | null;
 };
 
 // Register a new user
@@ -182,6 +184,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       driverLastName: userInfo.driver_last_name || null,
       driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
       driverStatus: userInfo.driver_status || null,
+      driverStatusSuccessConfirmed:
+        userInfo.driver_status_success_confirmed || null,
+      driverNotes: userInfo.driver_notes || null,
     };
 
     // 4. Respond with success
@@ -263,6 +268,9 @@ export const refreshToken = async (
       driverLastName: userInfo.driver_last_name || null,
       driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
       driverStatus: userInfo.driver_status || null,
+      driverStatusSuccessConfirmed:
+        userInfo.driver_status_success_confirmed || null,
+      driverNotes: userInfo.driver_notes || null,
     };
 
     res.status(200).json({
