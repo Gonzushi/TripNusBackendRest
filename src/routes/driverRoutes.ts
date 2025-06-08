@@ -292,6 +292,8 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *                 type: string
  *               postal_code:
  *                 type: string
+ *              vehicle_year:
+ *                 type: number
  *               vehicle_brand:
  *                 type: string
  *               vehicle_color:
