@@ -261,8 +261,7 @@ export const updateProfile = async (
     "vehicle_registration_no",
     "status",
     "push_token",
-    "status_success_confirmed",
-    "notes"
+    "notes",
   ];
 
   if (!authId) {

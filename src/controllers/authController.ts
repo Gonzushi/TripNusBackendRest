@@ -13,7 +13,7 @@ type UserInfo = {
   driver_last_name: string | null;
   driver_profile_picture_url: string | null;
   driver_status: string | null;
-  driver_status_success_confirmed: string | null;
+  driver_vehicle_plate_number: string | null;
   driver_notes: string | null;
 };
 
@@ -184,8 +184,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       driverLastName: userInfo.driver_last_name || null,
       driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
       driverStatus: userInfo.driver_status || null,
-      driverStatusSuccessConfirmed:
-        userInfo.driver_status_success_confirmed || null,
+      driverVehiclePlateNumber: userInfo.driver_vehicle_plate_number || null,
       driverNotes: userInfo.driver_notes || null,
     };
 
@@ -268,8 +267,7 @@ export const refreshToken = async (
       driverLastName: userInfo.driver_last_name || null,
       driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
       driverStatus: userInfo.driver_status || null,
-      driverStatusSuccessConfirmed:
-        userInfo.driver_status_success_confirmed || null,
+      driverVehiclePlateNumber: userInfo.driver_vehicle_plate_number || null,
       driverNotes: userInfo.driver_notes || null,
     };
 
