@@ -3,6 +3,7 @@ import multer from "multer";
 import {
   createProfile,
   uploadProfilePicture,
+  updateProfile,
 } from "../controllers/riderController";
 
 const upload = multer();
@@ -236,5 +237,119 @@ router.post("/profile", createProfile);
  *                   example: INTERNAL_ERROR
  */
 router.post("/picture", upload.single("file"), uploadProfilePicture);
+
+/**
+ * @swagger
+ * /rider/profile:
+ *   patch:
+ *     summary: Update driver profile information
+ *     tags: [Rider]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *              push_token:
+ *                type: string
+ *     responses:
+ *       200:
+ *         description: Rider profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Rider profile updated successfully
+ *                 code:
+ *                   type: string
+ *                   example: PROFILE_UPDATED
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Bad request or update failure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: Update Failed
+ *                 message:
+ *                   type: string
+ *                 code:
+ *                   type: string
+ *                   example: UPDATE_FAILED
+ *       401:
+ *         description: Unauthorized - missing authentication
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: User ID not found in request context.
+ *                 code:
+ *                   type: string
+ *                   example: USER_NOT_FOUND
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 error:
+ *                   type: string
+ *                   example: Not Found
+ *                 message:
+ *                   type: string
+ *                   example: User not found.
+ *                 code:
+ *                   type: string
+ *                   example: USER_NOT_FOUND
+ *       500:
+ *         description: Unexpected internal error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while updating the profile.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ */
+router.patch("/profile", updateProfile);
 
 export default router;

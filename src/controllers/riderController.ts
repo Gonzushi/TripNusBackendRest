@@ -200,3 +200,89 @@ export const uploadProfilePicture = async (
     });
   }
 };
+
+// Update rider profile
+export const updateProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const authId = req.user?.sub;
+
+  const updateFields = ["push_token"];
+
+  if (!authId) {
+    res.status(401).json({
+      status: 401,
+      error: "Unauthorized",
+      message: "User ID not found in request context.",
+      code: "USER_NOT_FOUND",
+    });
+    return;
+  }
+
+  try {
+    const { data: riderData, error: riderError } = await supabase
+      .from("riders")
+      .select("id")
+      .eq("auth_id", authId)
+      .single();
+
+    if (riderError || !riderData) {
+      res.status(404).json({
+        status: 404,
+        error: "Not Found",
+        message: "Rider not found.",
+        code: "RIDER_NOT_FOUND",
+      });
+      return;
+    }
+    const updates: Record<string, any> = {};
+    for (const field of updateFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({
+        status: 400,
+        error: "Bad Request",
+        message: "No valid fields provided for update.",
+        code: "NO_FIELDS_TO_UPDATE",
+      });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("riders")
+      .update(updates)
+      .eq("auth_id", authId)
+      .select()
+      .single();
+
+    if (error) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message: error.message,
+        code: "UPDATE_FAILED",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: "Rider profile updated successfully",
+      code: "PROFILE_UPDATED",
+      data,
+    });
+  } catch (err) {
+    console.error("Unexpected error in updateProfile:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while updating the profile.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};

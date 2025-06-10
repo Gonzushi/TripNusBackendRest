@@ -292,7 +292,7 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *                 type: string
  *               postal_code:
  *                 type: string
- *              vehicle_year:
+ *               vehicle_year:
  *                 type: number
  *               vehicle_brand:
  *                 type: string
@@ -304,15 +304,15 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *                 type: string
  *               vehicle_type:
  *                 type: string
- *              vehicle_registration_no:
+ *               vehicle_registration_no:
  *                 type: string
- *              status:
+ *               status:
  *                 type: string
- *              push_token:
+ *               push_token:
  *                 type: string
- *              status_success_confirmed:
+ *               status_success_confirmed:
  *                type: string
- *              notes:
+ *               notes:
  *                type: string
  *     responses:
  *       200:
