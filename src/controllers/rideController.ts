@@ -190,31 +190,34 @@ export const createRide = async (
       .eq("id", closestDriver[0])
       .single();
 
+    // Data for message
+    const messageData = {
+      type: "NEW_RIDE_REQUEST",
+      rideId: data.id,
+      distance_m,
+      duration_s,
+      fare,
+      platform_fee,
+      driver_earning,
+      app_commission,
+      fare_breakdown,
+      pickup: {
+        coords: planned_pickup_coords,
+        address: planned_pickup_address,
+      },
+      dropoff: {
+        coords: planned_dropoff_coords,
+        address: planned_dropoff_address,
+      },
+    };
+
     // Send push notification if FCM token exists
     if (driverData?.push_token) {
       try {
         await sendPushNotification(driverData.push_token, {
           title: "Ada penumpang baru nih!",
           body: `Jemput di ${planned_pickup_address}`,
-          data: {
-            type: "NEW_RIDE_REQUEST",
-            rideId: data.id,
-            distance_m,
-            duration_s,
-            fare,
-            platform_fee,
-            driver_earning,
-            app_commission,
-            fare_breakdown,
-            pickup: {
-              coords: planned_pickup_coords,
-              address: planned_pickup_address,
-            },
-            dropoff: {
-              coords: planned_dropoff_coords,
-              address: planned_dropoff_address,
-            },
-          },
+          data: messageData,
         });
       } catch (error) {
         console.error("Failed to send push notification:", error);
@@ -225,18 +228,7 @@ export const createRide = async (
     // Also send through WebSocket for real-time updates when app is in foreground
     await publisher.publish(
       `driver:${closestDriver[0]}`,
-      JSON.stringify({
-        type: "NEW_RIDE_REQUEST",
-        rideId: data.id,
-        pickup: {
-          coords: planned_pickup_coords,
-          address: planned_pickup_address,
-        },
-        dropoff: {
-          coords: planned_dropoff_coords,
-          address: planned_dropoff_address,
-        },
-      })
+      JSON.stringify(messageData)
     );
 
     res.status(201).json({
