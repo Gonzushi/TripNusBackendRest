@@ -186,27 +186,34 @@ export const createRide = async (
     // Send notification to the closest driver
     const { data: driverData } = await supabase
       .from("drivers")
-      .select("fcm_token")
+      .select("push_token")
       .eq("id", closestDriver[0])
       .single();
 
     // Send push notification if FCM token exists
-    if (driverData?.fcm_token) {
+    if (driverData?.push_token) {
       try {
-        await sendPushNotification(driverData.fcm_token, {
-          title: "New Ride Request",
-          body: `Pickup at ${planned_pickup_address}`,
+        await sendPushNotification(driverData.push_token, {
+          title: "Ada penumpang baru nih!",
+          body: `Jemput di ${planned_pickup_address}`,
           data: {
             type: "NEW_RIDE_REQUEST",
             rideId: data.id,
-            pickup: JSON.stringify({
+            distance_m,
+            duration_s,
+            fare,
+            platform_fee,
+            driver_earning,
+            app_commission,
+            fare_breakdown,
+            pickup: {
               coords: planned_pickup_coords,
               address: planned_pickup_address,
-            }),
-            dropoff: JSON.stringify({
+            },
+            dropoff: {
               coords: planned_dropoff_coords,
               address: planned_dropoff_address,
-            }),
+            },
           },
         });
       } catch (error) {
