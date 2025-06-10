@@ -1,6 +1,7 @@
 import express from "express";
 import {
   createRide,
+  getRide,
   sendRideRequest,
   updateRide,
 } from "../controllers/rideController";
@@ -395,5 +396,110 @@ router.patch("/update", updateRide);
  *                   example: INTERNAL_ERROR
  */
 router.post("/request", sendRideRequest);
+
+/**
+ * @swagger
+ * /ride/active-ride:
+ *   post:
+ *     summary: Get rider's active ride
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - riderId
+ *             properties:
+ *               riderId:
+ *                 type: string
+ *                 description: The rider's unique ID
+ *                 example: "rider_123"
+ *     responses:
+ *       200:
+ *         description: Ride details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "123e4567-e89b-12d3-a456-426614174000"
+ *                     rider_id:
+ *                       type: string
+ *                       example: "rider_123"
+ *                     driver_id:
+ *                       type: string
+ *                       example: "driver_123"
+ *                     status:
+ *                       type: string
+ *                       enum: [requesting_driver, driver_accepted, driver_arrived, in_progress, completed, cancelled]
+ *                     distance_m:
+ *                       type: number
+ *                       example: 5000
+ *                     duration_s:
+ *                       type: number
+ *                       example: 900
+ *                     fare:
+ *                       type: number
+ *                       example: 25000
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                     updated_at:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Bad request - Missing rider ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Rider ID is required"
+ *       404:
+ *         description: No active ride found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "No active ride found"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Internal server error"
+ */
+router.post("/active-ride", getRide);
+
 
 export default router;

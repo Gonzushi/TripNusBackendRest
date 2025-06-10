@@ -576,3 +576,62 @@ export const sendRideRequest = async (
   //   });
   // }
 };
+
+export const getRide = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { riderId } = req.body;
+
+    if (!riderId) {
+      res.status(400).json({
+        status: 400,
+        code: "RIDER_ID_NOT_FOUND",
+        message: "Rider ID is required",
+        error: "Rider ID is required",
+      });
+      return;
+    }
+
+    const { data: rideData, error: rideError } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("rider_id", riderId)
+      .not("status", "in", '("completed","cancelled")')
+      .single();
+
+    if (rideError) {
+      console.error("Error fetching ride:", rideError);
+      res.status(500).json({
+        status: 500,
+        code: "FAILED_TO_FETCH_RIDE_DATA",
+        message: "Failed to fetch ride data",
+        error: "Failed to fetch ride data",
+      });
+      return;
+    }
+
+    if (!rideData) {
+      res.status(404).json({
+        status: 404,
+        error: "No active ride found",
+        code: "NO_ACTIVE_RIDE_FOUND",
+        message: "No active ride found",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      code: "RIDE_DATA_FETCHED",
+      message: "Ride data fetched successfully",
+      data: rideData,
+    });
+  } catch (error) {
+    console.error("Unexpected error in getRide:", error);
+    res.status(500).json({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      message: "An unexpected error occurred while fetching the ride data.",
+      error: "Internal server error",
+    });
+  }
+};
