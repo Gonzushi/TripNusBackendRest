@@ -588,10 +588,8 @@ export const getRide = async (req: Request, res: Response): Promise<void> => {
       .select("*")
       .eq("rider_id", riderId)
       .not("status", "in", '("completed","cancelled")')
-      .single();
 
     if (rideError) {
-      console.error("Error fetching ride:", rideError);
       res.status(500).json({
         status: 500,
         code: "FAILED_TO_FETCH_RIDE_DATA",
