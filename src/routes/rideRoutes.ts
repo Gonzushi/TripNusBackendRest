@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  confirmRide,
   createRide,
   getRide,
   sendRideRequest,
@@ -501,5 +502,115 @@ router.post("/request", sendRideRequest);
  */
 router.post("/active-ride", getRide);
 
+/**
+ * @swagger
+ * /ride/confirm:
+ *   post:
+ *     summary: Confirm a ride by driver
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ride_id
+ *               - driver_id
+ *             properties:
+ *               ride_id:
+ *                 type: string
+ *                 description: The unique ID of the ride
+ *                 example: "ride_abc123"
+ *               driver_id:
+ *                 type: string
+ *                 description: The driver's unique ID
+ *                 example: "driver_456"
+ *     responses:
+ *       200:
+ *         description: Ride confirmed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Ride confirmed successfully"
+ *                 code:
+ *                   type: string
+ *                   example: "RIDE_CONFIRMED"
+ *       400:
+ *         description: Missing or invalid input fields or update failure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 code:
+ *                   type: string
+ *       404:
+ *         description: Ride not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 code:
+ *                   type: string
+ *       409:
+ *         description: Ride has already been accepted by another driver
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 409
+ *                 error:
+ *                   type: string
+ *                   example: "Conflict"
+ *                 message:
+ *                   type: string
+ *                   example: "Ride has already been taken."
+ *                 code:
+ *                   type: string
+ *                   example: "RIDE_ALREADY_TAKEN"
+ *       500:
+ *         description: Unexpected server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 code:
+ *                   type: string
+ */
+router.post("/confirm", confirmRide);
 
 export default router;

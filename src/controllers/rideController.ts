@@ -635,3 +635,113 @@ export const getRide = async (req: Request, res: Response): Promise<void> => {
     });
   }
 };
+
+export const confirmRide = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { ride_id, driver_id } = req.body;
+
+  if (!ride_id || !driver_id) {
+    res.status(400).json({
+      status: 400,
+      error: "Bad Request",
+      message: "Missing required fields: ride_id and driver_id.",
+      code: "MISSING_FIELDS",
+    });
+    return;
+  }
+
+  try {
+    // Fetch ride by ID
+    const { data: rideData, error: rideError } = await supabase
+      .from("rides")
+      .select("id, rider_id, status")
+      .eq("id", ride_id)
+      .single();
+
+    if (rideError || !rideData) {
+      res.status(404).json({
+        status: 404,
+        error: "Not Found",
+        message: rideError?.message ?? "Ride not found.",
+        code: "RIDE_NOT_FOUND",
+      });
+      return;
+    }
+
+    if (rideData.status !== "requesting_driver") {
+      res.status(409).json({
+        status: 409,
+        error: "Conflict",
+        message: "Ride has already been taken.",
+        code: "RIDE_ALREADY_TAKEN",
+      });
+      return;
+    }
+
+    // Update ride directly
+    const { error: updateError } = await supabase
+      .from("rides")
+      .update({
+        driver_id,
+        status: "driver_accepted",
+      })
+      .eq("id", ride_id);
+
+    if (updateError) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message: updateError.message,
+        code: "UPDATE_FAILED",
+      });
+      return;
+    }
+
+    // Notify rider
+    const { data: riderData } = await supabase
+      .from("riders")
+      .select("push_token")
+      .eq("id", rideData.rider_id)
+      .single();
+
+    const messageData = {
+      type: "RIDE_CONFIRMED",
+      rideId: ride_id,
+      driverId: driver_id,
+      status: "driver_accepted",
+    };
+
+    if (riderData?.push_token) {
+      try {
+        await sendPushNotification(riderData.push_token, {
+          title: "Driver confirmed!",
+          body: "A driver has accepted your ride request.",
+          data: messageData,
+        });
+      } catch (err) {
+        console.error("Push notification failed:", err);
+      }
+    }
+
+    await publisher.publish(
+      `rider:${rideData.rider_id}`,
+      JSON.stringify(messageData)
+    );
+
+    res.status(200).json({
+      status: 200,
+      message: "Ride confirmed successfully",
+      code: "RIDE_CONFIRMED",
+    });
+  } catch (err) {
+    console.error("Unexpected error in confirmRide:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while confirming the ride.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};
