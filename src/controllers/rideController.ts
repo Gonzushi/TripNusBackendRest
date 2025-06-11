@@ -194,6 +194,7 @@ export const createRide = async (
     const messageData = {
       type: "NEW_RIDE_REQUEST",
       rideId: data.id,
+      distance_to_pickup_km: parseFloat(closestDriver[1]),
       distance_m,
       duration_s,
       fare,
