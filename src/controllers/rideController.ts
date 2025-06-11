@@ -236,7 +236,7 @@ export const createRide = async (
       status: 201,
       message: "Ride created successfully and driver notified.",
       code: "RIDE_CREATED",
-      data,
+      data: data[0],
     });
   } catch (err) {
     console.error("Unexpected error in createRide:", err);
@@ -635,3 +635,4 @@ export const getRide = async (req: Request, res: Response): Promise<void> => {
     });
   }
 };
+
