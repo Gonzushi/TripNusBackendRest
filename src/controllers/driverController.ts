@@ -345,3 +345,43 @@ export const updateProfile = async (
     });
   }
 };
+
+export const getDriverProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const authId = req.user?.sub;
+
+  try {
+    const { data: driverData, error: driverError } = await supabase
+      .from("drivers")
+      .select("*")
+      .eq("auth_id", authId)
+      .single();
+
+    if (driverError) {
+      res.status(500).json({
+        status: 500,
+        code: "FAILED_TO_FETCH_DRIVER_DATA",
+        message: "Failed to fetch driver data",
+        error: "Failed to fetch driver data",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      code: "RIDE_DATA_FETCHED",
+      message: "Ride data fetched successfully",
+      data: driverData,
+    });
+  } catch (error) {
+    console.error("Unexpected error in getRide:", error);
+    res.status(500).json({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      message: "An unexpected error occurred while fetching the ride data.",
+      error: "Internal server error",
+    });
+  }
+};

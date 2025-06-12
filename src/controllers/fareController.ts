@@ -1,17 +1,4 @@
 import { Request, Response } from "express";
-import axios from "axios";
-
-const MAPBOX_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
-
-interface MapboxRoute {
-  duration: number;
-  distance: number;
-}
-
-interface MapboxResponse {
-  routes: MapboxRoute[];
-  code: string;
-}
 
 // Fare calculation
 function calculateFareLogic(distanceM: number, durationSec: number) {
@@ -91,7 +78,7 @@ export const calculateFare = async (
       status: 200,
       code: "FARE_CALCULATED",
       message: "Fare calculated successfully.",
-      data: fare
+      data: fare,
     });
     return;
   } catch (error: any) {

@@ -2,9 +2,11 @@ import express from "express";
 import multer from "multer";
 import {
   createProfile,
+  getDriverProfile,
   updateProfile,
   uploadPicture,
 } from "../controllers/driverController";
+import { get } from "http";
 
 const upload = multer();
 const router = express.Router();
@@ -408,5 +410,74 @@ router.patch("/picture", upload.single("file"), uploadPicture);
  *                   example: INTERNAL_ERROR
  */
 router.patch("/profile", updateProfile);
+
+/**
+ * @swagger
+ * /driver/profile:
+ *   get:
+ *     summary: Get the authenticated driver's profile
+ *     tags: [Driver]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Driver profile fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_DATA_FETCHED
+ *                 message:
+ *                   type: string
+ *                   example: Ride data fetched successfully
+ *                 data:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized - missing or invalid authentication
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: User ID not found in request context.
+ *                 code:
+ *                   type: string
+ *                   example: USER_NOT_FOUND
+ *       500:
+ *         description: Failed to fetch driver data or internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: FAILED_TO_FETCH_DRIVER_DATA
+ *                 message:
+ *                   type: string
+ *                   example: Failed to fetch driver data
+ *                 error:
+ *                   type: string
+ *                   example: Failed to fetch driver data
+ */
+router.get("/profile", getDriverProfile);
+
 
 export default router;
