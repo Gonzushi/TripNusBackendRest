@@ -5,6 +5,7 @@ import {
   confirmRide,
   createRide,
   getRide,
+  getRideDriver,
   rejectRide,
   updateRide,
 } from "../controllers/rideController";
@@ -940,5 +941,106 @@ router.post("/cancel-by-rider-before-pickup", cancelRideByRiderBeforePickup);
  */
 router.post("/cancel-by-driver", cancelByDriver);
 
+/**
+ * @swagger
+ * /ride/get-by-driver:
+ *   post:
+ *     summary: Get the active ride with status "driver_accepted" for a driver
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       description: Driver ID to fetch the active ride for
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - driverId
+ *             properties:
+ *               driverId:
+ *                 type: string
+ *                 description: The unique ID of the driver
+ *                 example: "driver_123abc"
+ *     responses:
+ *       200:
+ *         description: Active ride data fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_DATA_FETCHED
+ *                 message:
+ *                   type: string
+ *                   example: Ride data fetched successfully
+ *                 data:
+ *                   type: object
+ *                   description: The active ride object
+ *       400:
+ *         description: Missing driverId in request body
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 code:
+ *                   type: string
+ *                   example: DRIVER_ID_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Driver ID is required
+ *                 error:
+ *                   type: string
+ *                   example: Driver ID is required
+ *       404:
+ *         description: No active ride found or multiple active rides found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 code:
+ *                   type: string
+ *                   example: NO_ACTIVE_RIDE_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: No active ride found for the given driver
+ *                 error:
+ *                   type: string
+ *                   example: No active ride found
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_SERVER_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while fetching the ride data.
+ *                 error:
+ *                   type: string
+ *                   example: Internal server error
+ */
+router.post("/get-by-driver", getRideDriver);
 
 export default router;

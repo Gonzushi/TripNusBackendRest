@@ -937,3 +937,69 @@ export const cancelByDriver = async (
     });
   }
 };
+
+export const getRideDriver = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { driverId } = req.body;
+
+    if (!driverId) {
+      res.status(400).json({
+        status: 400,
+        code: "DRIVER_ID_NOT_FOUND",
+        message: "Driver ID is required",
+        error: "Driver ID is required",
+      });
+      return;
+    }
+
+    const { data: rideData, error: rideError } = await supabase
+      .from("rides")
+      .select("*")
+      .eq("driver_id", driverId)
+      .eq("status", "driver_accepted");
+
+    if (rideError) {
+      res.status(500).json({
+        status: 500,
+        code: "FAILED_TO_FETCH_RIDE_DATA",
+        message: "Failed to fetch ride data",
+        error: "Failed to fetch ride data",
+      });
+      return;
+    }
+
+    if (!rideData || rideData.length === 0) {
+      res.status(404).json({
+        status: 404,
+        error: "No active ride found",
+        code: "NO_ACTIVE_RIDE_FOUND",
+        message: "No active ride found for the given driver",
+      });
+      return;
+    } else if (rideData.length === 1) {
+      res.status(200).json({
+        status: 200,
+        code: "RIDE_DATA_FETCHED",
+        message: "Ride data fetched successfully",
+        data: rideData[0],
+      });
+      return;
+    } else {
+      res.status(404).json({
+        status: 404,
+        error: "There are multiple active rides",
+        code: "MULTIPLE_ACTIVE_RIDES",
+        message: "There are multiple active rides for this driver",
+      });
+      return;
+    }
+  } catch (error) {
+    console.error("Unexpected error in getRideDriver:", error);
+    res.status(500).json({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      message: "An unexpected error occurred while fetching the ride data.",
+      error: "Internal server error",
+    });
+  }
+};
