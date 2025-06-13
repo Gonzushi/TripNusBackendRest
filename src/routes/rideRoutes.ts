@@ -943,7 +943,7 @@ router.post("/cancel-by-driver", cancelByDriver);
 
 /**
  * @swagger
- * /ride/get-by-driver:
+ * /ride/active-ride-by-driver:
  *   post:
  *     summary: Get the active ride with status "driver_accepted" for a driver
  *     tags: [Ride]
@@ -1041,6 +1041,6 @@ router.post("/cancel-by-driver", cancelByDriver);
  *                   type: string
  *                   example: Internal server error
  */
-router.post("/get-by-driver", getRideDriver);
+router.post("/active-ride-by-driver", getRideDriver);
 
 export default router;
