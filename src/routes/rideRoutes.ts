@@ -1,8 +1,11 @@
 import express from "express";
 import {
+  cancelByDriver,
+  cancelRideByRiderBeforePickup,
   confirmRide,
   createRide,
   getRide,
+  rejectRide,
   updateRide,
 } from "../controllers/rideController";
 
@@ -438,6 +441,7 @@ router.post("/active-ride", getRide);
  * /ride/confirm:
  *   post:
  *     summary: Confirm a ride by driver
+ *     description: Confirms a ride assignment by the assigned driver. Updates ride and driver statuses, notifies the rider, and stops retry attempts.
  *     tags: [Ride]
  *     security:
  *       - bearerAuth: []
@@ -461,7 +465,7 @@ router.post("/active-ride", getRide);
  *                 example: "driver_456"
  *     responses:
  *       200:
- *         description: Ride confirmed successfully
+ *         description: Ride confirmed successfully. The rider is notified that the driver is on the way.
  *         content:
  *           application/json:
  *             schema:
@@ -477,6 +481,147 @@ router.post("/active-ride", getRide);
  *                   type: string
  *                   example: "RIDE_CONFIRMED"
  *       400:
+ *         description: Missing required fields or ride update failure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: "Bad Request"
+ *                 message:
+ *                   type: string
+ *                   example: "Missing required fields: ride_id and driver_id."
+ *                 code:
+ *                   type: string
+ *                   example: "MISSING_FIELDS"
+ *       403:
+ *         description: The ride is not assigned to the given driver
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 403
+ *                 error:
+ *                   type: string
+ *                   example: "Forbidden"
+ *                 message:
+ *                   type: string
+ *                   example: "This ride is not assigned to the given driver."
+ *                 code:
+ *                   type: string
+ *                   example: "UNAUTHORIZED_DRIVER"
+ *       404:
+ *         description: Ride not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 error:
+ *                   type: string
+ *                   example: "Not Found"
+ *                 message:
+ *                   type: string
+ *                   example: "Ride not found."
+ *                 code:
+ *                   type: string
+ *                   example: "RIDE_NOT_FOUND"
+ *       409:
+ *         description: Ride is no longer in 'requesting_driver' status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 409
+ *                 error:
+ *                   type: string
+ *                   example: "Conflict"
+ *                 message:
+ *                   type: string
+ *                   example: "Ride is no longer in 'requesting_driver' state."
+ *                 code:
+ *                   type: string
+ *                   example: "INVALID_STATUS"
+ *       500:
+ *         description: Unexpected server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: "Internal Server Error"
+ *                 message:
+ *                   type: string
+ *                   example: "An unexpected error occurred while confirming the ride."
+ *                 code:
+ *                   type: string
+ *                   example: "INTERNAL_ERROR"
+ */
+router.post("/confirm", confirmRide);
+
+/**
+ * @swagger
+ * /ride/reject:
+ *   post:
+ *     summary: Reject a ride request by the assigned driver
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ride_id
+ *               - driver_id
+ *             properties:
+ *               ride_id:
+ *                 type: string
+ *                 description: The unique ID of the ride
+ *                 example: "ride_abc123"
+ *               driver_id:
+ *                 type: string
+ *                 description: The driver's unique ID
+ *                 example: "driver_456"
+ *     responses:
+ *       200:
+ *         description: Ride rejected and re-queued for matching
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Ride rejected and re-queued for matching."
+ *                 code:
+ *                   type: string
+ *                   example: "RIDE_REJECTED"
+ *       400:
  *         description: Missing or invalid input fields or update failure
  *         content:
  *           application/json:
@@ -491,6 +636,25 @@ router.post("/active-ride", getRide);
  *                   type: string
  *                 code:
  *                   type: string
+ *       403:
+ *         description: The driver is not authorized to reject this ride
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 403
+ *                 error:
+ *                   type: string
+ *                   example: "Forbidden"
+ *                 message:
+ *                   type: string
+ *                   example: "This driver is not assigned to the ride."
+ *                 code:
+ *                   type: string
+ *                   example: "UNAUTHORIZED_DRIVER"
  *       404:
  *         description: Ride not found
  *         content:
@@ -506,8 +670,8 @@ router.post("/active-ride", getRide);
  *                   type: string
  *                 code:
  *                   type: string
- *       409:
- *         description: Ride has already been accepted by another driver
+ *       500:
+ *         description: Unexpected server error or match data missing
  *         content:
  *           application/json:
  *             schema:
@@ -515,16 +679,107 @@ router.post("/active-ride", getRide);
  *               properties:
  *                 status:
  *                   type: number
- *                   example: 409
  *                 error:
  *                   type: string
- *                   example: "Conflict"
  *                 message:
  *                   type: string
- *                   example: "Ride has already been taken."
  *                 code:
  *                   type: string
- *                   example: "RIDE_ALREADY_TAKEN"
+ */
+router.post("/reject", rejectRide);
+
+/**
+ * @swagger
+ * /ride/cancel-by-rider-before-pickup:
+ *   post:
+ *     summary: Cancel a ride by the rider before pickup
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ride_id
+ *               - rider_id
+ *             properties:
+ *               ride_id:
+ *                 type: string
+ *                 description: The unique ID of the ride
+ *                 example: "ride_abc123"
+ *               rider_id:
+ *                 type: string
+ *                 description: The unique ID of the rider
+ *                 example: "rider_456"
+ *     responses:
+ *       200:
+ *         description: Ride cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "Ride cancelled successfully."
+ *                 code:
+ *                   type: string
+ *                   example: "RIDE_CANCELLED"
+ *       400:
+ *         description: Missing or invalid input fields or update failure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 code:
+ *                   type: string
+ *       403:
+ *         description: The rider is not authorized to cancel this ride
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 403
+ *                 error:
+ *                   type: string
+ *                   example: "Forbidden"
+ *                 message:
+ *                   type: string
+ *                   example: "This ride does not belong to the given rider."
+ *                 code:
+ *                   type: string
+ *                   example: "UNAUTHORIZED_RIDER"
+ *       404:
+ *         description: Ride not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 code:
+ *                   type: string
  *       500:
  *         description: Unexpected server error
  *         content:
@@ -542,6 +797,148 @@ router.post("/active-ride", getRide);
  *                 code:
  *                   type: string
  */
-router.post("/confirm", confirmRide);
+router.post("/cancel-by-rider-before-pickup", cancelRideByRiderBeforePickup);
+
+/**
+ * @swagger
+ * /ride/cancel-by-driver:
+ *   post:
+ *     summary: Cancel a ride by the assigned driver
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ride_id
+ *               - driver_id
+ *             properties:
+ *               ride_id:
+ *                 type: string
+ *                 description: The unique ID of the ride
+ *                 example: "ride_abc123"
+ *               driver_id:
+ *                 type: string
+ *                 description: The driver's unique ID
+ *                 example: "driver_456"
+ *     responses:
+ *       200:
+ *         description: Ride cancelled and reassigned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Ride cancelled by driver and reassigned
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_DRIVER_CANCELLED
+ *       400:
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: Bad Request
+ *                 message:
+ *                   type: string
+ *                   example: "Missing required fields: ride_id and driver_id."
+ *                 code:
+ *                   type: string
+ *                   example: MISSING_FIELDS
+ *       403:
+ *         description: The ride is not assigned to the given driver
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 403
+ *                 error:
+ *                   type: string
+ *                   example: Forbidden
+ *                 message:
+ *                   type: string
+ *                   example: This ride is not assigned to the given driver.
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED_DRIVER
+ *       404:
+ *         description: Ride not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 error:
+ *                   type: string
+ *                   example: Not Found
+ *                 message:
+ *                   type: string
+ *                   example: Ride not found.
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_NOT_FOUND
+ *       409:
+ *         description: Ride is not in the correct status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 409
+ *                 error:
+ *                   type: string
+ *                   example: Conflict
+ *                 message:
+ *                   type: string
+ *                   example: Ride is not in 'driver_accepted' status.
+ *                 code:
+ *                   type: string
+ *                   example: INVALID_STATUS
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while cancelling the ride.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ */
+router.post("/cancel-by-driver", cancelByDriver);
+
 
 export default router;
