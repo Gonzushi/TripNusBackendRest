@@ -906,6 +906,7 @@ export const getRideRider = async (
         `
         *,
         drivers (
+          auth_id,
           first_name,
           last_name,
           rating,
@@ -999,6 +1000,7 @@ export const getRideDriver = async (
         `
         *,
         riders (
+          auth_id,
           first_name,
           last_name,
           rating,
