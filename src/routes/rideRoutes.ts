@@ -4,7 +4,7 @@ import {
   cancelRideByRiderBeforePickup,
   confirmRide,
   createRide,
-  getRide,
+  getRideRider,
   getRideDriver,
   rejectRide,
   updateRide,
@@ -335,25 +335,12 @@ router.patch("/update", updateRide);
 
 /**
  * @swagger
- * /ride/active-ride:
- *   post:
- *     summary: Get rider's active ride
+ * /ride/active-ride-by-rider:
+ *   get:
+ *     summary: Get the authenticated rider's active ride
  *     tags: [Ride]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - riderId
- *             properties:
- *               riderId:
- *                 type: string
- *                 description: The rider's unique ID
- *                 example: "rider_123"
  *     responses:
  *       200:
  *         description: Ride details retrieved successfully
@@ -362,9 +349,15 @@ router.patch("/update", updateRide);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_DATA_FETCHED
+ *                 message:
+ *                   type: string
+ *                   example: Ride data fetched successfully
  *                 data:
  *                   type: object
  *                   properties:
@@ -395,32 +388,44 @@ router.patch("/update", updateRide);
  *                     updated_at:
  *                       type: string
  *                       format: date-time
- *       400:
- *         description: Bad request - Missing rider ID
+ *       401:
+ *         description: Unauthorized - Auth ID missing from JWT
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
+ *                 status:
+ *                   type: number
+ *                   example: 401
+ *                 code:
+ *                   type: string
+ *                   example: AUTH_ID_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Auth ID is required
  *                 error:
  *                   type: string
- *                   example: "Rider ID is required"
+ *                   example: Auth ID is missing from the request context
  *       404:
- *         description: No active ride found
+ *         description: No active ride found or multiple active rides found
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 code:
+ *                   type: string
+ *                   example: NO_ACTIVE_RIDE_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: No active ride found
  *                 error:
  *                   type: string
- *                   example: "No active ride found"
+ *                   example: No active ride found for this rider
  *       500:
  *         description: Server error
  *         content:
@@ -428,14 +433,20 @@ router.patch("/update", updateRide);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_SERVER_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while fetching the ride data.
  *                 error:
  *                   type: string
- *                   example: "Internal server error"
+ *                   example: Internal server error
  */
-router.post("/active-ride", getRide);
+router.get("/active-ride-by-rider", getRideRider);
 
 /**
  * @swagger
@@ -944,25 +955,11 @@ router.post("/cancel-by-driver", cancelByDriver);
 /**
  * @swagger
  * /ride/active-ride-by-driver:
- *   post:
- *     summary: Get the active ride with status "driver_accepted" for a driver
+ *   get:
+ *     summary: Get the active ride with status "driver_accepted" for the authenticated driver
  *     tags: [Ride]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       description: Driver ID to fetch the active ride for
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - driverId
- *             properties:
- *               driverId:
- *                 type: string
- *                 description: The unique ID of the driver
- *                 example: "driver_123abc"
  *     responses:
  *       200:
  *         description: Active ride data fetched successfully
@@ -983,8 +980,8 @@ router.post("/cancel-by-driver", cancelByDriver);
  *                 data:
  *                   type: object
  *                   description: The active ride object
- *       400:
- *         description: Missing driverId in request body
+ *       401:
+ *         description: Missing or invalid authentication token
  *         content:
  *           application/json:
  *             schema:
@@ -992,16 +989,16 @@ router.post("/cancel-by-driver", cancelByDriver);
  *               properties:
  *                 status:
  *                   type: number
- *                   example: 400
+ *                   example: 401
  *                 code:
  *                   type: string
- *                   example: DRIVER_ID_NOT_FOUND
+ *                   example: AUTH_ID_NOT_FOUND
  *                 message:
  *                   type: string
- *                   example: Driver ID is required
+ *                   example: Auth ID is required
  *                 error:
  *                   type: string
- *                   example: Driver ID is required
+ *                   example: Auth ID is missing from the request context
  *       404:
  *         description: No active ride found or multiple active rides found
  *         content:
@@ -1017,10 +1014,29 @@ router.post("/cancel-by-driver", cancelByDriver);
  *                   example: NO_ACTIVE_RIDE_FOUND
  *                 message:
  *                   type: string
- *                   example: No active ride found for the given driver
+ *                   example: No active ride found for the authenticated driver
  *                 error:
  *                   type: string
  *                   example: No active ride found
+ *       409:
+ *         description: Multiple active rides found (unexpected)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 409
+ *                 code:
+ *                   type: string
+ *                   example: MULTIPLE_ACTIVE_RIDES
+ *                 message:
+ *                   type: string
+ *                   example: There are multiple active rides for this driver
+ *                 error:
+ *                   type: string
+ *                   example: There are multiple active rides
  *       500:
  *         description: Internal server error
  *         content:
@@ -1041,6 +1057,6 @@ router.post("/cancel-by-driver", cancelByDriver);
  *                   type: string
  *                   example: Internal server error
  */
-router.post("/active-ride-by-driver", getRideDriver);
+router.get("/active-ride-by-driver", getRideDriver);
 
 export default router;

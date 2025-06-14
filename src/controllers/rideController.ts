@@ -351,72 +351,6 @@ export const updateRide = async (
   }
 };
 
-export const getRide = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { riderId } = req.body;
-
-    if (!riderId) {
-      res.status(400).json({
-        status: 400,
-        code: "RIDER_ID_NOT_FOUND",
-        message: "Rider ID is required",
-        error: "Rider ID is required",
-      });
-      return;
-    }
-
-    const { data: rideData, error: rideError } = await supabase
-      .from("rides")
-      .select("*")
-      .eq("rider_id", riderId)
-      .not("status", "in", '("completed","cancelled")');
-
-    if (rideError) {
-      res.status(500).json({
-        status: 500,
-        code: "FAILED_TO_FETCH_RIDE_DATA",
-        message: "Failed to fetch ride data",
-        error: "Failed to fetch ride data",
-      });
-      return;
-    }
-
-    if (rideData.length === 0) {
-      res.status(404).json({
-        status: 404,
-        error: "No active ride found",
-        code: "NO_ACTIVE_RIDE_FOUND",
-        message: "No active ride found",
-      });
-      return;
-    } else if ((rideData.length = 1)) {
-      res.status(200).json({
-        status: 200,
-        code: "RIDE_DATA_FETCHED",
-        message: "Ride data fetched successfully",
-        data: rideData[0],
-      });
-      return;
-    } else {
-      res.status(404).json({
-        status: 404,
-        error: "There are multiple active rides",
-        code: "MULTIPLE_ACTIVE_RIDES",
-        message: "There are multiple active rides",
-      });
-      return;
-    }
-  } catch (error) {
-    console.error("Unexpected error in getRide:", error);
-    res.status(500).json({
-      status: 500,
-      code: "INTERNAL_SERVER_ERROR",
-      message: "An unexpected error occurred while fetching the ride data.",
-      error: "Internal server error",
-    });
-  }
-};
-
 export const confirmRide = async (
   req: Request,
   res: Response
@@ -938,24 +872,122 @@ export const cancelByDriver = async (
   }
 };
 
-export const getRideDriver = async (req: Request, res: Response): Promise<void> => {
+export const getRideRider = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    const { driverId } = req.body;
+    const authId = req.user?.sub;
 
-    if (!driverId) {
+    if (!authId) {
       res.status(400).json({
         status: 400,
-        code: "DRIVER_ID_NOT_FOUND",
-        message: "Driver ID is required",
-        error: "Driver ID is required",
+        code: "AUTH_ID_NOT_FOUND",
+        message: "Auth ID is required",
+        error: "Auth ID is missing from the request context",
       });
       return;
     }
 
     const { data: rideData, error: rideError } = await supabase
       .from("rides")
-      .select("*")
-      .eq("driver_id", driverId)
+      .select(
+        `
+          *,
+          riders (
+            first_name,
+            last_name,
+            rating,
+            users (
+              phone
+            )
+          )
+        `
+      )
+      .eq("riders.auth_id", authId)
+      .not("status", "in", '("completed","cancelled")');
+
+    if (rideError) {
+      res.status(500).json({
+        status: 500,
+        code: "FAILED_TO_FETCH_RIDE_DATA",
+        message: "Failed to fetch ride data",
+        error: rideError.message,
+      });
+      return;
+    }
+
+    if (!rideData || rideData.length === 0) {
+      res.status(404).json({
+        status: 404,
+        error: "No active ride found",
+        code: "NO_ACTIVE_RIDE_FOUND",
+        message: "No active ride found for this rider",
+      });
+      return;
+    }
+
+    if (rideData.length === 1) {
+      res.status(200).json({
+        status: 200,
+        code: "RIDE_DATA_FETCHED",
+        message: "Ride data fetched successfully",
+        data: rideData[0],
+      });
+      return;
+    }
+
+    // More than one active ride
+    res.status(409).json({
+      status: 409,
+      error: "Multiple active rides found",
+      code: "MULTIPLE_ACTIVE_RIDES",
+      message: "There are multiple active rides for this rider",
+    });
+  } catch (error) {
+    console.error("Unexpected error in getRideRider:", error);
+    res.status(500).json({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      message: "An unexpected error occurred while fetching the ride data.",
+      error: (error as Error).message,
+    });
+  }
+};
+
+export const getRideDriver = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const authId = req.user?.sub;
+
+    if (!authId) {
+      res.status(401).json({
+        status: 401,
+        code: "AUTH_ID_NOT_FOUND",
+        message: "Auth ID is required",
+        error: "Auth ID is missing from the request context",
+      });
+      return;
+    }
+
+    const { data: rideData, error: rideError } = await supabase
+      .from("rides")
+      .select(
+        `
+        *,
+        drivers (
+          first_name,
+          last_name,
+          rating,
+          users (
+            phone
+          )
+        )
+      `
+      )
+      .eq("drivers.auth_id", authId)
       .eq("status", "driver_accepted");
 
     if (rideError) {
@@ -963,7 +995,7 @@ export const getRideDriver = async (req: Request, res: Response): Promise<void> 
         status: 500,
         code: "FAILED_TO_FETCH_RIDE_DATA",
         message: "Failed to fetch ride data",
-        error: "Failed to fetch ride data",
+        error: rideError.message,
       });
       return;
     }
@@ -985,8 +1017,8 @@ export const getRideDriver = async (req: Request, res: Response): Promise<void> 
       });
       return;
     } else {
-      res.status(404).json({
-        status: 404,
+      res.status(409).json({
+        status: 409,
         error: "There are multiple active rides",
         code: "MULTIPLE_ACTIVE_RIDES",
         message: "There are multiple active rides for this driver",
