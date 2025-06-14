@@ -893,16 +893,26 @@ export const getRideRider = async (
       .from("rides")
       .select(
         `
-          *,
-          riders (
-            first_name,
-            last_name,
-            rating,
-            users (
-              phone
-            )
+        *,
+        drivers (
+          first_name,
+          last_name,
+          rating,
+          vehicle_year,
+          vehicle_type,
+          vehicle_brand,
+          vehicle_model,
+          vehicle_color,
+          vehicle_plate_number,
+          profile_picture_url,
+          users (
+            phone
           )
-        `
+        ),
+        riders (
+          auth_id
+        )
+      `
       )
       .eq("riders.auth_id", authId)
       .not("status", "in", '("completed","cancelled")');
@@ -977,13 +987,16 @@ export const getRideDriver = async (
       .select(
         `
         *,
-        drivers (
+        riders (
           first_name,
           last_name,
           rating,
           users (
             phone
           )
+        ),
+        drivers (
+          auth_id
         )
       `
       )
