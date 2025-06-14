@@ -670,6 +670,17 @@ export const cancelRideByRiderBeforePickup = async (
       return;
     }
 
+    const allowedStatuses = ["requesting_driver", "searching"];
+    if (!allowedStatuses.includes(rideData.status)) {
+      res.status(409).json({
+        status: 409,
+        error: "Conflict",
+        message: `Ride cannot be cancelled in its current status: ${rideData.status}.`,
+        code: "INVALID_CANCEL_STATUS",
+      });
+      return;
+    }
+
     // 🚫 Update ride status to cancelled
     const { error: updateError } = await supabase
       .from("rides")
