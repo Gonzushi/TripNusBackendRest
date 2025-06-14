@@ -255,6 +255,10 @@ router.post("/picture", upload.single("file"), uploadProfilePicture);
  *             properties:
  *              push_token:
  *                type: string
+ *              first_name:
+ *                type: string
+ *              last_name:
+ *                type: string
  *     responses:
  *       200:
  *         description: Rider profile updated successfully

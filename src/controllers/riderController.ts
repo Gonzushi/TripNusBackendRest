@@ -208,7 +208,7 @@ export const updateProfile = async (
 ): Promise<void> => {
   const authId = req.user?.sub;
 
-  const updateFields = ["push_token"];
+  const updateFields = ["push_token", "first_name", "last_name"];
 
   if (!authId) {
     res.status(401).json({

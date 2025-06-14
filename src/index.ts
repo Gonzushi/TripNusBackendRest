@@ -18,7 +18,6 @@ import driverRoutes from "./routes/driverRoutes";
 import fareRoutes from "./routes/fareRoutes";
 import healthRoutes from "./routes/healthRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
-import userRoutes from "./routes/userRoutes";
 import riderRoutes from "./routes/riderRoutes";
 import rideRoutes from "./routes/rideRoutes";
 import utilsRoutes from "./routes/utilsRoutes";
@@ -39,7 +38,6 @@ app.use("/fare", authenticateUser, fareRoutes);
 app.use("/payment", authenticateUser, paymentRoutes);
 app.use("/ride", authenticateUser, rideRoutes);
 app.use("/rider", authenticateUser, riderRoutes);
-app.use("/user", authenticateUser, userRoutes);
 app.use("/utils", utilsRoutes);
 
 // Swagger

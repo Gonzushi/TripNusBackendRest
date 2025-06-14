@@ -3,18 +3,18 @@ import supabase, { supabaseAnon } from "../supabaseClient";
 
 type UserInfo = {
   user_id: string;
-  first_name: string | null;
-  last_name: string | null;
   phone: string | null;
   rider_id: string | null;
+  rider_first_name: string | null;
+  rider_last_name: string | null;
   rider_profile_picture_url: string | null;
   driver_id: string | null;
   driver_first_name: string | null;
   driver_last_name: string | null;
-  driver_profile_picture_url: string | null;
-  driver_status: string | null;
   driver_vehicle_type: string | null;
   driver_vehicle_plate_number: string | null;
+  driver_profile_picture_url: string | null;
+  driver_status: string | null;
   driver_notes: string | null;
 };
 
@@ -175,18 +175,18 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const responseData = {
       ...authData,
       userId: userInfo.user_id,
-      firstName: userInfo.first_name,
-      lastName: userInfo.last_name,
       phone: userInfo.phone || null,
       riderId: userInfo.rider_id || null,
+      riderFirstName: userInfo.rider_first_name,
+      riderLastName: userInfo.rider_last_name,
       riderProfilePictureUrl: userInfo.rider_profile_picture_url || null,
       driverId: userInfo.driver_id || null,
       driverFirstName: userInfo.driver_first_name || null,
       driverLastName: userInfo.driver_last_name || null,
-      driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
-      driverStatus: userInfo.driver_status || null,
       driverVehicleType: userInfo.driver_vehicle_type || null,
       driverVehiclePlateNumber: userInfo.driver_vehicle_plate_number || null,
+      driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
+      driverStatus: userInfo.driver_status || null,
       driverNotes: userInfo.driver_notes || null,
     };
 
@@ -259,21 +259,20 @@ export const refreshToken = async (
     const responseData = {
       ...authData,
       userId: userInfo.user_id,
-      firstName: userInfo.first_name,
-      lastName: userInfo.last_name,
       phone: userInfo.phone || null,
       riderId: userInfo.rider_id || null,
+      riderFirstName: userInfo.rider_first_name,
+      riderLastName: userInfo.rider_last_name,
       riderProfilePictureUrl: userInfo.rider_profile_picture_url || null,
       driverId: userInfo.driver_id || null,
       driverFirstName: userInfo.driver_first_name || null,
       driverLastName: userInfo.driver_last_name || null,
-      driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
-      driverStatus: userInfo.driver_status || null,
       driverVehicleType: userInfo.driver_vehicle_type || null,
       driverVehiclePlateNumber: userInfo.driver_vehicle_plate_number || null,
+      driverProfilePictureUrl: userInfo.driver_profile_picture_url || null,
+      driverStatus: userInfo.driver_status || null,
       driverNotes: userInfo.driver_notes || null,
     };
-
     res.status(200).json({
       status: 200,
       message: "Access token refreshed successfully",
