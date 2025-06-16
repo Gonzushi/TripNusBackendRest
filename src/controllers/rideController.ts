@@ -474,7 +474,7 @@ export const confirmRide = async (
       try {
         await sendPushNotification(riderData.push_token, {
           title: "Driver dalam perjalanan!",
-          body: "Seorang driver telah menerima permintaan Anda dan sedang menuju lokasi penjemputan.",
+          body: "Driver telah menerima permintaan Anda dan sedang menuju lokasi penjemputan.",
           data: messageData,
         });
       } catch (err) {
