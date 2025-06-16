@@ -4,6 +4,8 @@ import { redis, publisher } from "../index";
 import { sendPushNotification } from "../services/notificationService";
 import { rideMatchQueue } from "../queues/rideMatchQueue";
 
+const MAX_RADIUS_KM = 10;
+
 export const createRide = async (
   req: Request,
   res: Response
@@ -784,37 +786,6 @@ export const cancelByDriver = async (
       return;
     }
 
-    // Notify rider
-    const { data: riderData } = await supabase
-      .from("riders")
-      .select("push_token")
-      .eq("id", ride.rider_id)
-      .single();
-
-    const messageData = {
-      type: "RIDE_CANCELLED_BY_DRIVER",
-      rideId: ride_id,
-      driverId: driver_id,
-      status: "requesting_driver",
-    };
-
-    if (riderData?.push_token) {
-      try {
-        await sendPushNotification(riderData.push_token, {
-          title: "Driver membatalkan perjalanan",
-          body: "Kami sedang mencari driver baru untuk Anda.",
-          data: messageData,
-        });
-      } catch (err) {
-        console.error("Push notification failed:", err);
-      }
-    }
-
-    await publisher.publish(
-      `rider:${ride.rider_id}`,
-      JSON.stringify(messageData)
-    );
-
     // Increment driver's decline count
     await supabase.rpc("increment_decline_count", { driver_id });
 
@@ -835,7 +806,10 @@ export const cancelByDriver = async (
       })
       .eq("id", driver_id);
 
-    // Reconstruct job for retry
+    // Remove driver review lock
+    await redis.del(`driver:is_reviewing:${driver_id}`);
+
+    // Cleanup existing retry job
     const matchAttempt = ride.match_attempt;
     const { message_data, attemptedDrivers, retry_count } = matchAttempt;
 
@@ -843,7 +817,6 @@ export const cancelByDriver = async (
     delete message_data.distance_to_pickup_km;
     delete message_data.type;
 
-    // Remove existing job if it exists
     const existingJob = await rideMatchQueue.getJob(
       `ride_match_${ride_id}_retry_${retry_count}`
     );
@@ -851,25 +824,82 @@ export const cancelByDriver = async (
       await existingJob.remove();
     }
 
-    await redis.del(`driver:is_reviewing:${driver_id}`);
+    // Look for a nearby available driver who has not been tried
+    const GEO_KEY = "drivers:locations";
+    const MAX_RADIUS_KM = 10;
 
-    // Add new job to queue
-    await rideMatchQueue.add(
-      `ride_match_${ride_id}`,
-      {
-        ...message_data,
-        attemptedDrivers,
-      },
-      {
-        jobId: `ride_match_${ride_id}`,
-        removeOnComplete: true,
-        removeOnFail: true,
+    const geoResults = (await redis.geosearch(
+      GEO_KEY,
+      "FROMLONLAT",
+      message_data.pickup.coords[0],
+      message_data.pickup.coords[1],
+      "BYRADIUS",
+      MAX_RADIUS_KM,
+      "km",
+      "ASC",
+      "WITHDIST"
+    )) as [string, string][];
+
+    let selectedDriverId: string | null = null;
+
+    for (const [foundDriverId] of geoResults) {
+      if (!attemptedDrivers.includes(foundDriverId)) {
+        selectedDriverId = foundDriverId;
+        break;
       }
+    }
+
+    if (selectedDriverId) {
+      await rideMatchQueue.add(
+        `ride_match_${ride_id}`,
+        {
+          ...message_data,
+          attemptedDrivers,
+        },
+        {
+          jobId: `ride_match_${ride_id}`,
+          removeOnComplete: true,
+          removeOnFail: true,
+        }
+      );
+    }
+
+    // Notify rider (after processing)
+    const { data: riderData } = await supabase
+      .from("riders")
+      .select("push_token")
+      .eq("id", ride.rider_id)
+      .single();
+
+    const messageData = {
+      type: "RIDE_CANCELLED_BY_DRIVER",
+      rideId: ride_id,
+      driverId: driver_id,
+      status: "requesting_driver",
+    };
+
+    if (riderData?.push_token) {
+      try {
+        await sendPushNotification(riderData.push_token, {
+          title: "Driver membatalkan perjalanan",
+          body: selectedDriverId
+            ? "Kami sedang mencari driver baru untuk Anda."
+            : "Driver membatalkan, dan saat ini belum ada driver yang tersedia.",
+          data: messageData,
+        });
+      } catch (err) {
+        console.error("Push notification failed:", err);
+      }
+    }
+
+    await publisher.publish(
+      `rider:${ride.rider_id}`,
+      JSON.stringify(messageData)
     );
 
     res.status(200).json({
       status: 200,
-      message: "Ride cancelled by driver and reassigned",
+      message: "Ride cancelled by driver and reassigned if possible",
       code: "RIDE_DRIVER_CANCELLED",
     });
   } catch (err) {
