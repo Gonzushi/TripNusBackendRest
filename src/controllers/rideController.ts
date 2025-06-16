@@ -1046,7 +1046,7 @@ export const getRideDriver = async (
       `
       )
       .eq("drivers.auth_id", authId)
-      .eq("status", "driver_accepted");
+      .not("status", "in", '("completed","cancelled")');
 
     if (rideError) {
       res.status(500).json({
