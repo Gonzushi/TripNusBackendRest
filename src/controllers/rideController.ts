@@ -966,6 +966,7 @@ export const getRideRider = async (
       latitude: number;
       longitude: number;
       heading_deg: number;
+      speed_kph: number;
     } | null = null;
 
     if (driverId) {
@@ -977,14 +978,17 @@ export const getRideRider = async (
         redisData.lat &&
         redisData.lng &&
         redisData.heading_deg &&
+        redisData.speed_kph &&
         !isNaN(parseFloat(redisData.lat)) &&
         !isNaN(parseFloat(redisData.lng)) &&
-        !isNaN(parseFloat(redisData.heading_deg))
+        !isNaN(parseFloat(redisData.heading_deg)) &&
+        !isNaN(parseFloat(redisData.speed_kph))
       ) {
         driverLocation = {
           latitude: parseFloat(redisData.lat),
           longitude: parseFloat(redisData.lng),
           heading_deg: parseFloat(redisData.heading_deg),
+          speed_kph: parseFloat(redisData.speed_kph),
         };
       }
     }
