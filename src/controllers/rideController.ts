@@ -949,22 +949,47 @@ export const getRideRider = async (
       return;
     }
 
-    if (rideData.length === 1) {
-      res.status(200).json({
-        status: 200,
-        code: "RIDE_DATA_FETCHED",
-        message: "Ride data fetched successfully",
-        data: rideData[0],
+    if (rideData.length > 1) {
+      res.status(409).json({
+        status: 409,
+        error: "Multiple active rides found",
+        code: "MULTIPLE_ACTIVE_RIDES",
+        message: "There are multiple active rides for this rider",
       });
       return;
     }
 
-    // More than one active ride
-    res.status(409).json({
-      status: 409,
-      error: "Multiple active rides found",
-      code: "MULTIPLE_ACTIVE_RIDES",
-      message: "There are multiple active rides for this rider",
+    const ride = rideData[0];
+    const driverId = ride.drivers.id;
+
+    let driverLocation: { latitude: number; longitude: number } | null = null;
+
+    if (driverId) {
+      const redisKey = `driver:${driverId}`;
+      const redisData = await redis.hgetall(redisKey);
+
+      if (
+        redisData &&
+        redisData.lat &&
+        redisData.lng &&
+        !isNaN(parseFloat(redisData.lat)) &&
+        !isNaN(parseFloat(redisData.lng))
+      ) {
+        driverLocation = {
+          latitude: parseFloat(redisData.lat),
+          longitude: parseFloat(redisData.lng),
+        };
+      }
+    }
+
+    res.status(200).json({
+      status: 200,
+      code: "RIDE_DATA_FETCHED",
+      message: "Ride data fetched successfully",
+      data: {
+        ...ride,
+        driverLocation,
+      },
     });
   } catch (error) {
     console.error("Unexpected error in getRideRider:", error);
