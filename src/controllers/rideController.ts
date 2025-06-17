@@ -990,7 +990,7 @@ export const getRideRider = async (
     }
 
     const ride = rideData[0];
-    const driverId = ride.drivers.id;
+    const driverId = ride.drivers?.id;
 
     let driverLocation: {
       latitude: number;
