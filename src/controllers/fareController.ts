@@ -71,7 +71,7 @@ function calculateFareLogic(distanceM: number, durationSec: number) {
 }
 
 // Get nearby drivers for fare calculation
-export async function getNearbyDrivers(
+async function getNearbyDrivers(
   redis: Redis,
   pickup: { latitude: number; longitude: number }
 ) {
@@ -128,13 +128,11 @@ export const calculateFare = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { distanceM, durationSec, pickup } = req.body;
+    const { distanceM, durationSec } = req.body;
 
     if (
       typeof distanceM !== "number" ||
-      typeof durationSec !== "number" ||
-      !pickup?.latitude ||
-      !pickup?.longitude
+      typeof durationSec !== "number" 
     ) {
       res.status(400).json({
         status: 400,
@@ -145,16 +143,12 @@ export const calculateFare = async (
     }
 
     const fare = calculateFareLogic(distanceM, durationSec);
-    const nearbyDrivers = await getNearbyDrivers(redis, pickup);
 
     res.status(200).json({
       status: 200,
       code: "FARE_CALCULATED",
       message: "Fare and nearby drivers calculated successfully.",
-      data: {
-        ...fare,
-        nearby_drivers: nearbyDrivers,
-      },
+      data: fare
     });
   } catch (error: any) {
     console.error("Internal error:", error?.response?.data || error.message);
@@ -162,6 +156,42 @@ export const calculateFare = async (
       status: 500,
       error: "Internal Server Error",
       message: "An unexpected error occurred while calculating fare.",
+      code: "INTERNAL_ERROR",
+      details: error?.response?.data || error.message,
+    });
+  }
+};
+
+export const getNearbyDriversHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { pickup } = req.body;
+
+    if (!pickup?.latitude || !pickup?.longitude) {
+      res.status(400).json({
+        status: 400,
+        code: "INVALID_INPUT",
+        message: "Missing or invalid fields: pickup.latitude, pickup.longitude",
+      });
+      return;
+    }
+
+    const nearbyDrivers = await getNearbyDrivers(redis, pickup);
+
+    res.status(200).json({
+      status: 200,
+      code: "NEARBY_DRIVERS_FOUND",
+      message: "Nearby drivers retrieved successfully.",
+      data: nearbyDrivers,
+    });
+  } catch (error: any) {
+    console.error("Internal error:", error?.response?.data || error.message);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while fetching nearby drivers.",
       code: "INTERNAL_ERROR",
       details: error?.response?.data || error.message,
     });
