@@ -795,7 +795,6 @@ export const cancelByDriver = async (
   }
 
   try {
-    // Fetch ride
     const { data: ride, error: rideError } = await supabase
       .from("rides")
       .select("id, rider_id, status, driver_id, match_attempt, vehicle_type")
@@ -836,30 +835,11 @@ export const cancelByDriver = async (
       return;
     }
 
-    // Increment driver's decline count
     await supabase.rpc("increment_decline_count", { driver_id });
 
-    // Reset ride status and driver
-    await supabase
-      .from("rides")
-      .update({
-        status: "searching",
-        driver_id: null,
-      })
-      .eq("id", ride_id);
-
-    // Set driver availability status to 'available'
-    await supabase
-      .from("drivers")
-      .update({
-        availability_status: "available",
-      })
-      .eq("id", driver_id);
-
-    // Remove driver review lock
+    // Remove review lock
     await redis.del(`driver:is_reviewing:${driver_id}`);
 
-    // Cleanup existing retry job
     const matchAttempt = ride.match_attempt;
     const { message_data, attemptedDrivers, retry_count } = matchAttempt;
 
@@ -867,14 +847,13 @@ export const cancelByDriver = async (
     delete message_data.distance_to_pickup_km;
     delete message_data.type;
 
+    // Remove old retry job
     const existingJob = await rideMatchQueue.getJob(
       `ride_match_${ride_id}_retry_${retry_count}`
     );
-    if (existingJob) {
-      await existingJob.remove();
-    }
+    if (existingJob) await existingJob.remove();
 
-    // Look for a nearby available driver who has not been tried
+    // Geo search
     const GEO_KEY = `drivers:locations:${ride.vehicle_type}`;
     const MAX_RADIUS_KM = 10;
 
@@ -899,7 +878,27 @@ export const cancelByDriver = async (
       }
     }
 
+    // Fetch rider push token for notification
+    const { data: riderData } = await supabase
+      .from("riders")
+      .select("push_token")
+      .eq("id", ride.rider_id)
+      .single();
+
+    let messageData: any = {};
+    let pushTitle = "";
+    let pushBody = "";
+
     if (selectedDriverId) {
+      // Reassign ride
+      await supabase
+        .from("rides")
+        .update({
+          status: "searching",
+          driver_id: null,
+        })
+        .eq("id", ride_id);
+
       await rideMatchQueue.add(
         `ride_match_${ride_id}`,
         {
@@ -912,29 +911,52 @@ export const cancelByDriver = async (
           removeOnFail: true,
         }
       );
+
+      messageData = {
+        type: "RIDE_CANCELLED_BY_DRIVER",
+        rideId: ride_id,
+        driverId: driver_id,
+        status: "requesting_driver",
+      };
+
+      pushTitle = "Driver membatalkan perjalanan";
+      pushBody = "Kami sedang mencari driver baru untuk Anda.";
+    } else {
+      // Cancel ride
+      await supabase
+        .from("rides")
+        .update({
+          status: "cancelled",
+          driver_id: null,
+        })
+        .eq("id", ride_id);
+
+      messageData = {
+        type: "RIDE_CANCELLED_BY_DRIVER_AND_NO_DRIVER_AVAILABLE",
+        rideId: ride_id,
+        driverId: driver_id,
+        status: "cancelled",
+      };
+
+      pushTitle = "Driver membatalkan perjalanan";
+      pushBody =
+        "Driver membatalkan, dan kami tidak dapat menemukan driver lain.";
     }
 
-    // Notify rider (after processing)
-    const { data: riderData } = await supabase
-      .from("riders")
-      .select("push_token")
-      .eq("id", ride.rider_id)
-      .single();
+    // Set driver to available
+    await supabase
+      .from("drivers")
+      .update({
+        availability_status: "available",
+      })
+      .eq("id", driver_id);
 
-    const messageData = {
-      type: "RIDE_CANCELLED_BY_DRIVER",
-      rideId: ride_id,
-      driverId: driver_id,
-      status: "requesting_driver",
-    };
-
+    // Send push notification
     if (riderData?.push_token) {
       try {
         await sendPushNotification(riderData.push_token, {
-          title: "Driver membatalkan perjalanan",
-          body: selectedDriverId
-            ? "Kami sedang mencari driver baru untuk Anda."
-            : "Driver membatalkan, dan saat ini belum ada driver yang tersedia.",
+          title: pushTitle,
+          body: pushBody,
           data: messageData,
         });
       } catch (err) {
@@ -942,6 +964,7 @@ export const cancelByDriver = async (
       }
     }
 
+    // Send WebSocket message
     await publisher.publish(
       `rider:${ride.rider_id}`,
       JSON.stringify(messageData)
@@ -949,7 +972,9 @@ export const cancelByDriver = async (
 
     res.status(200).json({
       status: 200,
-      message: "Ride cancelled by driver and reassigned if possible",
+      message: selectedDriverId
+        ? "Ride cancelled by driver and reassigned"
+        : "Ride cancelled by driver and no available driver found",
       code: "RIDE_DRIVER_CANCELLED",
     });
   } catch (err) {
