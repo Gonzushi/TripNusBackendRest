@@ -1,9 +1,4 @@
 import { Request, Response } from "express";
-import Redis from "ioredis";
-import { redis } from "../index";
-
-const MAX_RADIUS_KM = 10;
-const MAX_RESULTS = 10;
 
 // Fare calculation
 function calculateFareLogic(distanceM: number, durationSec: number) {
@@ -70,59 +65,6 @@ function calculateFareLogic(distanceM: number, durationSec: number) {
   };
 }
 
-// Get nearby drivers for fare calculation
-async function getNearbyDrivers(
-  redis: Redis,
-  pickup: { latitude: number; longitude: number }
-) {
-  const { latitude, longitude } = pickup;
-
-  const motorcycleResults = (await redis.geosearch(
-    "drivers:locations:motorcycle",
-    "FROMLONLAT",
-    longitude,
-    latitude,
-    "BYRADIUS",
-    MAX_RADIUS_KM,
-    "km",
-    "ASC",
-    "WITHDIST",
-    "WITHCOORD",
-    "COUNT",
-    MAX_RESULTS
-  )) as [string, string, [string, string]][];
-
-  const carResults = (await redis.geosearch(
-    "drivers:locations:car",
-    "FROMLONLAT",
-    longitude,
-    latitude,
-    "BYRADIUS",
-    MAX_RADIUS_KM,
-    "km",
-    "ASC",
-    "WITHDIST",
-    "WITHCOORD",
-    "COUNT",
-    MAX_RESULTS
-  )) as [string, string, [string, string]][];
-
-  return {
-    motorcycle: motorcycleResults.map(([driverId, distance, [lon, lat]]) => ({
-      driver_id: driverId,
-      distance_km: parseFloat(distance),
-      longitude: parseFloat(lon),
-      latitude: parseFloat(lat),
-    })),
-    car: carResults.map(([driverId, distance, [lon, lat]]) => ({
-      driver_id: driverId,
-      distance_km: parseFloat(distance),
-      longitude: parseFloat(lon),
-      latitude: parseFloat(lat),
-    })),
-  };
-}
-
 export const calculateFare = async (
   req: Request,
   res: Response
@@ -156,42 +98,6 @@ export const calculateFare = async (
       status: 500,
       error: "Internal Server Error",
       message: "An unexpected error occurred while calculating fare.",
-      code: "INTERNAL_ERROR",
-      details: error?.response?.data || error.message,
-    });
-  }
-};
-
-export const getNearbyDriversHandler = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const { pickup } = req.body;
-
-    if (!pickup?.latitude || !pickup?.longitude) {
-      res.status(400).json({
-        status: 400,
-        code: "INVALID_INPUT",
-        message: "Missing or invalid fields: pickup.latitude, pickup.longitude",
-      });
-      return;
-    }
-
-    const nearbyDrivers = await getNearbyDrivers(redis, pickup);
-
-    res.status(200).json({
-      status: 200,
-      code: "NEARBY_DRIVERS_FOUND",
-      message: "Nearby drivers retrieved successfully.",
-      data: nearbyDrivers,
-    });
-  } catch (error: any) {
-    console.error("Internal error:", error?.response?.data || error.message);
-    res.status(500).json({
-      status: 500,
-      error: "Internal Server Error",
-      message: "An unexpected error occurred while fetching nearby drivers.",
       code: "INTERNAL_ERROR",
       details: error?.response?.data || error.message,
     });

@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
 import supabase from "../supabaseClient";
+import Redis from "ioredis";
+import { redis } from "../index";
+
+const MAX_RADIUS_KM = 10;
+const MAX_RESULTS = 10;
 
 // Create driver profile
 export const createProfile = async (
@@ -382,6 +387,94 @@ export const getDriverProfile = async (
       code: "INTERNAL_SERVER_ERROR",
       message: "An unexpected error occurred while fetching the ride data.",
       error: "Internal server error",
+    });
+  }
+};
+
+async function getNearbyDrivers(
+  redis: Redis,
+  pickup: { latitude: number; longitude: number }
+) {
+  const { latitude, longitude } = pickup;
+
+  const motorcycleResults = (await redis.geosearch(
+    "drivers:locations:motorcycle",
+    "FROMLONLAT",
+    longitude,
+    latitude,
+    "BYRADIUS",
+    MAX_RADIUS_KM,
+    "km",
+    "ASC",
+    "WITHDIST",
+    "WITHCOORD",
+    "COUNT",
+    MAX_RESULTS
+  )) as [string, string, [string, string]][];
+
+  const carResults = (await redis.geosearch(
+    "drivers:locations:car",
+    "FROMLONLAT",
+    longitude,
+    latitude,
+    "BYRADIUS",
+    MAX_RADIUS_KM,
+    "km",
+    "ASC",
+    "WITHDIST",
+    "WITHCOORD",
+    "COUNT",
+    MAX_RESULTS
+  )) as [string, string, [string, string]][];
+
+  return {
+    motorcycle: motorcycleResults.map(([driverId, distance, [lon, lat]]) => ({
+      driver_id: driverId,
+      distance_km: parseFloat(distance),
+      longitude: parseFloat(lon),
+      latitude: parseFloat(lat),
+    })),
+    car: carResults.map(([driverId, distance, [lon, lat]]) => ({
+      driver_id: driverId,
+      distance_km: parseFloat(distance),
+      longitude: parseFloat(lon),
+      latitude: parseFloat(lat),
+    })),
+  };
+}
+
+export const getNearbyDriversHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { pickup } = req.body;
+
+    if (!pickup?.latitude || !pickup?.longitude) {
+      res.status(400).json({
+        status: 400,
+        code: "INVALID_INPUT",
+        message: "Missing or invalid fields: pickup.latitude, pickup.longitude",
+      });
+      return;
+    }
+
+    const nearbyDrivers = await getNearbyDrivers(redis, pickup);
+
+    res.status(200).json({
+      status: 200,
+      code: "NEARBY_DRIVERS_FOUND",
+      message: "Nearby drivers retrieved successfully.",
+      data: nearbyDrivers,
+    });
+  } catch (error: any) {
+    console.error("Internal error:", error?.response?.data || error.message);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while fetching nearby drivers.",
+      code: "INTERNAL_ERROR",
+      details: error?.response?.data || error.message,
     });
   }
 };

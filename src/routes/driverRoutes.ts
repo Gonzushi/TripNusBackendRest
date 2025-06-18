@@ -3,10 +3,10 @@ import multer from "multer";
 import {
   createProfile,
   getDriverProfile,
+  getNearbyDriversHandler,
   updateProfile,
   uploadPicture,
 } from "../controllers/driverController";
-import { get } from "http";
 
 const upload = multer();
 const router = express.Router();
@@ -478,6 +478,126 @@ router.patch("/profile", updateProfile);
  *                   example: Failed to fetch driver data
  */
 router.get("/profile", getDriverProfile);
+
+/**
+ * @swagger
+ * /driver/nearby:
+ *   post:
+ *     summary: Get nearby drivers based on pickup location
+ *     tags: [Driver]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pickup
+ *             properties:
+ *               pickup:
+ *                 type: object
+ *                 description: Pickup location coordinates
+ *                 required:
+ *                   - latitude
+ *                   - longitude
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                     example: -6.1754
+ *                   longitude:
+ *                     type: number
+ *                     example: 106.8272
+ *     responses:
+ *       200:
+ *         description: Nearby drivers found successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: NEARBY_DRIVERS_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Nearby drivers retrieved successfully.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     motorcycle:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           driver_id:
+ *                             type: string
+ *                           latitude:
+ *                             type: number
+ *                           longitude:
+ *                             type: number
+ *                           distance_km:
+ *                             type: number
+ *                     car:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           driver_id:
+ *                             type: string
+ *                           latitude:
+ *                             type: number
+ *                           longitude:
+ *                             type: number
+ *                           distance_km:
+ *                             type: number
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: Bad Request
+ *                 message:
+ *                   type: string
+ *                   example: Missing or invalid pickup location
+ *                 code:
+ *                   type: string
+ *                   example: INVALID_PARAMETERS
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while fetching nearby drivers.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ *                 details:
+ *                   type: string
+ *                   example: Some error details
+ */
+router.post("/nearby", getNearbyDriversHandler);
 
 
 export default router;
