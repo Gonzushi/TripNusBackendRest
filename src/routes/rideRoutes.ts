@@ -8,6 +8,10 @@ import {
   getRideDriver,
   rejectRide,
   updateRide,
+  driverArrivedAtPickup,
+  confirmPickupByDriver,
+  confirmDropoffByDriver,
+  confirmPaymentByDriver,
 } from "../controllers/rideController";
 
 const router = express.Router();
@@ -1058,5 +1062,579 @@ router.post("/cancel-by-driver", cancelByDriver);
  *                   example: Internal server error
  */
 router.get("/active-ride-by-driver", getRideDriver);
+
+/**
+ * @swagger
+ * /ride/driver-arrived:
+ *   post:
+ *     summary: Confirm that the driver has arrived at the pickup location
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ride_id
+ *               - driver_id
+ *             properties:
+ *               ride_id:
+ *                 type: string
+ *                 example: "e1f3a6d0-9f58-4c12-bae6-8cd3a9e8c8aa"
+ *               driver_id:
+ *                 type: string
+ *                 example: "9bfa54c2-7f4e-4f8b-9f83-5e301ad8fa2e"
+ *     responses:
+ *       200:
+ *         description: Driver marked as arrived successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: DRIVER_ARRIVED
+ *                 message:
+ *                   type: string
+ *                   example: Driver marked as arrived successfully.
+ *       400:
+ *         description: Missing required fields or bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 code:
+ *                   type: string
+ *                   example: MISSING_FIELDS
+ *                 message:
+ *                   type: string
+ *                   example: Missing required fields: ride_id and driver_id.
+ *                 error:
+ *                   type: string
+ *                   example: Bad Request
+ *       403:
+ *         description: Unauthorized driver attempting to confirm arrival
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 403
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED_DRIVER
+ *                 message:
+ *                   type: string
+ *                   example: This driver is not assigned to the ride.
+ *                 error:
+ *                   type: string
+ *                   example: Forbidden
+ *       404:
+ *         description: Ride not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Ride not found.
+ *                 error:
+ *                   type: string
+ *                   example: Not Found
+ *       409:
+ *         description: Ride is not in a valid state to confirm arrival
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 409
+ *                 code:
+ *                   type: string
+ *                   example: INVALID_RIDE_STATUS
+ *                 message:
+ *                   type: string
+ *                   example: Ride must be in 'driver_accepted' state to mark as arrived.
+ *                 error:
+ *                   type: string
+ *                   example: Conflict
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while confirming arrival.
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ */
+router.post("/driver-arrived", driverArrivedAtPickup);
+
+/**
+ * @swagger
+ * /ride/confirm-pickup:
+ *   post:
+ *     summary: Driver confirms passenger pickup and starts the ride
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ride_id
+ *               - driver_id
+ *               - actual_pickup_coords
+ *             properties:
+ *               ride_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "b529c3d2-8fc2-4d9f-95d1-4faaf4569e5b"
+ *               driver_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "c176b7a3-1a6a-44d0-9b9d-e4aeb1f9d3e3"
+ *               actual_pickup_coords:
+ *                 type: object
+ *                 required:
+ *                   - latitude
+ *                   - longitude
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                     example: -6.200000
+ *                   longitude:
+ *                     type: number
+ *                     example: 106.816666
+ *     responses:
+ *       200:
+ *         description: Pickup confirmed successfully, ride is now in progress
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_IN_PROGRESS
+ *                 message:
+ *                   type: string
+ *                   example: Pickup confirmed, ride is now in progress.
+ *       400:
+ *         description: Bad request or missing/invalid fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 code:
+ *                   type: string
+ *                   example: MISSING_FIELDS
+ *                 message:
+ *                   type: string
+ *                   example: Missing required fields: ride_id, driver_id, actual_pickup_coords.
+ *                 error:
+ *                   type: string
+ *                   example: Bad Request
+ *       403:
+ *         description: Driver is not authorized to update this ride
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 403
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED_DRIVER
+ *                 message:
+ *                   type: string
+ *                   example: This driver is not assigned to the ride.
+ *                 error:
+ *                   type: string
+ *                   example: Forbidden
+ *       404:
+ *         description: Ride not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Ride not found.
+ *                 error:
+ *                   type: string
+ *                   example: Not Found
+ *       409:
+ *         description: Ride is not in the correct state to be updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 409
+ *                 code:
+ *                   type: string
+ *                   example: INVALID_RIDE_STATUS
+ *                 message:
+ *                   type: string
+ *                   example: Ride must be in 'driver_arrived' state to confirm pickup.
+ *                 error:
+ *                   type: string
+ *                   example: Conflict
+ *       500:
+ *         description: Unexpected server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while confirming the pickup.
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ */
+router.post("/confirm-pickup", confirmPickupByDriver);
+
+/**
+ * @swagger
+ * /ride/confirm-dropoff:
+ *   post:
+ *     summary: Confirm that the driver has dropped off the rider
+ *     description: Used by the driver to confirm the rider has been dropped off at the destination.
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ride_id
+ *               - driver_id
+ *               - actual_dropoff_coords
+ *             properties:
+ *               ride_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "7c32b2f2-d45b-4af3-bfd6-1a22115e2cb7"
+ *               driver_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "d83b9c77-3b2f-489b-85fa-d9d2f4c2e188"
+ *               actual_dropoff_coords:
+ *                 type: object
+ *                 required:
+ *                   - latitude
+ *                   - longitude
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                     example: -6.1754
+ *                   longitude:
+ *                     type: number
+ *                     example: 106.8272
+ *     responses:
+ *       200:
+ *         description: Dropoff confirmed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_PAYMENT_PENDING
+ *                 message:
+ *                   type: string
+ *                   example: Dropoff confirmed, waiting for rider payment.
+ *       400:
+ *         description: Missing or invalid input fields, or update failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 code:
+ *                   type: string
+ *                   example: MISSING_FIELDS
+ *                 message:
+ *                   type: string
+ *                   example: Missing required fields: ride_id, driver_id, actual_dropoff_coords.
+ *                 error:
+ *                   type: string
+ *                   example: Bad Request
+ *       403:
+ *         description: Driver is not assigned to the ride
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 403
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED_DRIVER
+ *                 message:
+ *                   type: string
+ *                   example: This driver is not assigned to the ride.
+ *                 error:
+ *                   type: string
+ *                   example: Forbidden
+ *       404:
+ *         description: Ride not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Ride not found.
+ *                 error:
+ *                   type: string
+ *                   example: Not Found
+ *       409:
+ *         description: Ride is not in a valid state to confirm dropoff
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 409
+ *                 code:
+ *                   type: string
+ *                   example: INVALID_RIDE_STATUS
+ *                 message:
+ *                   type: string
+ *                   example: Ride must be in 'in_progress' state to confirm dropoff.
+ *                 error:
+ *                   type: string
+ *                   example: Conflict
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while confirming dropoff.
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ */
+router.post("/confirm-dropoff", confirmDropoffByDriver);
+
+/**
+ * @swagger
+ * /ride/confirm-payment-by-driver:
+ *   post:
+ *     summary: Confirm payment and complete the ride
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ride_id
+ *               - driver_id
+ *             properties:
+ *               ride_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440000"
+ *               driver_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "430e8400-e29b-41d4-a716-446655440111"
+ *     responses:
+ *       200:
+ *         description: Payment confirmed, ride completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_COMPLETED
+ *                 message:
+ *                   type: string
+ *                   example: Payment confirmed. Ride is now completed.
+ *       400:
+ *         description: Missing fields or update failure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 code:
+ *                   type: string
+ *                   example: MISSING_FIELDS
+ *                 message:
+ *                   type: string
+ *                   example: Missing required fields: ride_id and driver_id.
+ *       403:
+ *         description: Driver is not assigned to the ride
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 403
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED_DRIVER
+ *                 message:
+ *                   type: string
+ *                   example: This driver is not assigned to the ride.
+ *       404:
+ *         description: Ride not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Ride not found.
+ *       409:
+ *         description: Invalid ride status for payment confirmation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 409
+ *                 code:
+ *                   type: string
+ *                   example: INVALID_RIDE_STATUS
+ *                 message:
+ *                   type: string
+ *                   example: Ride must be in 'payment_in_progress' state to confirm payment.
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while confirming payment.
+ */
+router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
 
 export default router;

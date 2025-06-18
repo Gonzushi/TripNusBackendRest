@@ -426,7 +426,7 @@ export const confirmRide = async (
       return;
     }
 
-    // 🔄 Update driver status to busy and reset counters
+    // 🔄 Update driver status to en_route_to_pickup and reset counters
     const { error: driverUpdateError } = await supabase
       .from("drivers")
       .update({
@@ -650,7 +650,7 @@ export const cancelRideByRiderBeforePickup = async (
   try {
     const { data: rideData, error: rideError } = await supabase
       .from("rides")
-      .select("id, rider_id, status, match_attempt")
+      .select("id, rider_id, status, match_attempt, driver_id")
       .eq("id", ride_id)
       .single();
 
@@ -674,7 +674,11 @@ export const cancelRideByRiderBeforePickup = async (
       return;
     }
 
-    const allowedStatuses = ["requesting_driver", "searching"];
+    const allowedStatuses = [
+      "requesting_driver",
+      "searching",
+      "driver_accepted",
+    ];
     if (!allowedStatuses.includes(rideData.status)) {
       res.status(409).json({
         status: 409,
@@ -716,6 +720,46 @@ export const cancelRideByRiderBeforePickup = async (
       }
     } catch (err) {
       console.warn(`⚠️ Failed to remove job for ride ${ride_id}:`, err);
+    }
+
+    // 🔔 Notify driver if assigned
+    if (rideData.driver_id) {
+      const { data: driverData, error: driverError } = await supabase
+        .from("drivers")
+        .select("push_token")
+        .eq("id", rideData.driver_id)
+        .single();
+
+      if (driverData?.push_token) {
+        // Send push notification
+        try {
+          await sendPushNotification(driverData.push_token, {
+            title: "Perjalanan dibatalkan",
+            body: "Penumpang telah membatalkan perjalanan.",
+          });
+        } catch (err) {
+          console.warn(
+            `⚠️ Failed to send push to driver ${rideData.driver_id}:`,
+            err
+          );
+        }
+      }
+
+      // Send WebSocket event (if you have a publisher setup)
+      try {
+        await publisher.publish(
+          `driver:${rideData.driver_id}`,
+          JSON.stringify({
+            type: "RIDE_CANCELLED",
+            message: "Ride cancelled by rider before pickup.",
+          })
+        );
+      } catch (err) {
+        console.warn(
+          `⚠️ Failed to publish WS event to driver ${rideData.driver_id}:`,
+          err
+        );
+      }
     }
 
     res.status(200).json({
@@ -768,11 +812,15 @@ export const cancelByDriver = async (
       return;
     }
 
-    if (ride.status !== "driver_accepted") {
+    if (
+      ride.status !== "driver_accepted" &&
+      ride.status !== "driver_arrived" &&
+      ride.status !== "in_progress"
+    ) {
       res.status(409).json({
         status: 409,
         error: "Conflict",
-        message: "Ride is not in 'driver_accepted' status.",
+        message: `Ride is in '${ride.status}' status.`,
         code: "INVALID_STATUS",
       });
       return;
@@ -1126,6 +1174,540 @@ export const getRideDriver = async (
       code: "INTERNAL_SERVER_ERROR",
       message: "An unexpected error occurred while fetching the ride data.",
       error: "Internal server error",
+    });
+  }
+};
+
+export const driverArrivedAtPickup = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { ride_id, driver_id } = req.body;
+
+  if (!ride_id || !driver_id) {
+    res.status(400).json({
+      status: 400,
+      error: "Bad Request",
+      message: "Missing required fields: ride_id and driver_id.",
+      code: "MISSING_FIELDS",
+    });
+    return;
+  }
+
+  try {
+    // Get ride
+    const { data: rideData, error: rideError } = await supabase
+      .from("rides")
+      .select("id, driver_id, rider_id, status")
+      .eq("id", ride_id)
+      .single();
+
+    if (rideError || !rideData) {
+      res.status(404).json({
+        status: 404,
+        error: "Not Found",
+        message: rideError?.message ?? "Ride not found.",
+        code: "RIDE_NOT_FOUND",
+      });
+      return;
+    }
+
+    // Ensure driver is assigned to this ride
+    if (rideData.driver_id !== driver_id) {
+      res.status(403).json({
+        status: 403,
+        error: "Forbidden",
+        message: "This driver is not assigned to the ride.",
+        code: "UNAUTHORIZED_DRIVER",
+      });
+      return;
+    }
+
+    // Only allow transition if ride is in driver_accepted status
+    if (rideData.status !== "driver_accepted") {
+      res.status(409).json({
+        status: 409,
+        error: "Conflict",
+        message: `Ride must be in 'driver_accepted' state to mark as arrived.`,
+        code: "INVALID_RIDE_STATUS",
+      });
+      return;
+    }
+
+    // Update ride status
+    const { error: rideUpdateError } = await supabase
+      .from("rides")
+      .update({
+        status: "driver_arrived",
+      })
+      .eq("id", ride_id);
+
+    if (rideUpdateError) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message: rideUpdateError.message,
+        code: "UPDATE_FAILED",
+      });
+      return;
+    }
+
+    // Update driver availability_status
+    const { error: driverUpdateError } = await supabase
+      .from("drivers")
+      .update({
+        availability_status: "waiting_to_pickup",
+      })
+      .eq("id", driver_id);
+
+    if (driverUpdateError) {
+      console.error(
+        `⚠️ Failed to update driver ${driver_id} status to waiting_to_pickup:`,
+        driverUpdateError.message
+      );
+    }
+
+    // Notify rider
+    const { data: riderData } = await supabase
+      .from("riders")
+      .select("push_token")
+      .eq("id", rideData.rider_id)
+      .single();
+
+    const messageData = {
+      type: "RIDE_ARRIVED",
+      rideId: ride_id,
+      driverId: driver_id,
+      status: "driver_arrived",
+    };
+
+    if (riderData?.push_token) {
+      try {
+        await sendPushNotification(riderData.push_token, {
+          title: "Driver telah tiba",
+          body: "Driver Anda telah tiba di lokasi penjemputan. Silakan bersiap!",
+          data: messageData,
+        });
+      } catch (err) {
+        console.error("Push notification failed:", err);
+      }
+    }
+
+    await publisher.publish(
+      `rider:${rideData.rider_id}`,
+      JSON.stringify(messageData)
+    );
+
+    res.status(200).json({
+      status: 200,
+      message: "Driver marked as arrived successfully.",
+      code: "DRIVER_ARRIVED",
+    });
+  } catch (err) {
+    console.error("Unexpected error in driverArrivedAtPickup:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while confirming arrival.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};
+
+export const confirmPickupByDriver = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { ride_id, driver_id, actual_pickup_coords } = req.body;
+
+  if (!ride_id || !driver_id || !actual_pickup_coords) {
+    res.status(400).json({
+      status: 400,
+      error: "Bad Request",
+      message:
+        "Missing required fields: ride_id, driver_id, actual_pickup_coords.",
+      code: "MISSING_FIELDS",
+    });
+    return;
+  }
+
+  const { latitude, longitude } = actual_pickup_coords;
+  if (
+    typeof latitude !== "number" ||
+    typeof longitude !== "number" ||
+    !isFinite(latitude) ||
+    !isFinite(longitude)
+  ) {
+    res.status(400).json({
+      status: 400,
+      error: "Bad Request",
+      message: "Invalid actual_pickup_coords format.",
+      code: "INVALID_COORDS",
+    });
+    return;
+  }
+
+  try {
+    const { data: ride, error: rideError } = await supabase
+      .from("rides")
+      .select("id, status, driver_id, rider_id")
+      .eq("id", ride_id)
+      .single();
+
+    if (rideError || !ride) {
+      res.status(404).json({
+        status: 404,
+        error: "Not Found",
+        message: rideError?.message ?? "Ride not found.",
+        code: "RIDE_NOT_FOUND",
+      });
+      return;
+    }
+
+    if (ride.driver_id !== driver_id) {
+      res.status(403).json({
+        status: 403,
+        error: "Forbidden",
+        message: "This driver is not assigned to the ride.",
+        code: "UNAUTHORIZED_DRIVER",
+      });
+      return;
+    }
+
+    if (ride.status !== "driver_arrived") {
+      res.status(409).json({
+        status: 409,
+        error: "Conflict",
+        message: "Ride must be in 'driver_arrived' state to confirm pickup.",
+        code: "INVALID_RIDE_STATUS",
+      });
+      return;
+    }
+
+    // Use RPC to update ride
+    const { error: rpcError } = await supabase.rpc("ride_update", {
+      p_ride_id: ride_id,
+      p_driver_id: null,
+      p_status: "in_progress",
+      p_ended_at: null,
+      p_actual_pickup_coords: [longitude, latitude], // NOTE: lng, lat order for PostGIS POINT
+      p_actual_dropoff_coords: null,
+    });
+
+    if (rpcError) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message: rpcError.message,
+        code: "RIDE_UPDATE_FAILED",
+      });
+      return;
+    }
+
+    // Update driver availability
+    const { error: driverUpdateError } = await supabase
+      .from("drivers")
+      .update({ availability_status: "en_route_to_drop_off" })
+      .eq("id", driver_id);
+
+    if (driverUpdateError) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message: driverUpdateError.message,
+        code: "DRIVER_UPDATE_FAILED",
+      });
+      return;
+    }
+
+    // Fetch push token
+    const { data: riderData } = await supabase
+      .from("riders")
+      .select("push_token")
+      .eq("id", ride.rider_id)
+      .single();
+
+    const messageData = {
+      type: "RIDE_IN_PROGRESS",
+      rideId: ride_id,
+      driverId: driver_id,
+      status: "in_progress",
+    };
+
+    if (riderData?.push_token) {
+      try {
+        await sendPushNotification(riderData.push_token, {
+          title: "Perjalanan dimulai",
+          body: "Driver telah menjemput Anda. Selamat menikmati perjalanan!",
+          data: messageData,
+        });
+      } catch (err) {
+        console.error("Push notification failed:", err);
+      }
+    }
+
+    await publisher.publish(
+      `rider:${ride.rider_id}`,
+      JSON.stringify(messageData)
+    );
+
+    res.status(200).json({
+      status: 200,
+      code: "RIDE_IN_PROGRESS",
+      message: "Pickup confirmed, ride is now in progress.",
+    });
+  } catch (err) {
+    console.error("Unexpected error in confirmPickupByDriver:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while confirming the pickup.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};
+
+export const confirmDropoffByDriver = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { ride_id, driver_id, actual_dropoff_coords } = req.body;
+
+  if (
+    !ride_id ||
+    !driver_id ||
+    !actual_dropoff_coords?.latitude ||
+    !actual_dropoff_coords?.longitude
+  ) {
+    res.status(400).json({
+      status: 400,
+      error: "Bad Request",
+      message:
+        "Missing required fields: ride_id, driver_id, actual_dropoff_coords.",
+      code: "MISSING_FIELDS",
+    });
+    return;
+  }
+
+  try {
+    const { data: ride, error: rideError } = await supabase
+      .from("rides")
+      .select("id, status, driver_id, rider_id")
+      .eq("id", ride_id)
+      .single();
+
+    if (rideError || !ride) {
+      res.status(404).json({
+        status: 404,
+        error: "Not Found",
+        message: rideError?.message ?? "Ride not found.",
+        code: "RIDE_NOT_FOUND",
+      });
+      return;
+    }
+
+    if (ride.driver_id !== driver_id) {
+      res.status(403).json({
+        status: 403,
+        error: "Forbidden",
+        message: "This driver is not assigned to the ride.",
+        code: "UNAUTHORIZED_DRIVER",
+      });
+      return;
+    }
+
+    if (ride.status !== "in_progress") {
+      res.status(409).json({
+        status: 409,
+        error: "Conflict",
+        message: "Ride must be in 'in_progress' state to confirm dropoff.",
+        code: "INVALID_RIDE_STATUS",
+      });
+      return;
+    }
+
+    // Use RPC to update ride
+    const { error: rpcError } = await supabase.rpc("ride_update", {
+      p_ride_id: ride_id,
+      p_driver_id: driver_id,
+      p_status: "payment_in_progress",
+      p_actual_dropoff_coords: [
+        actual_dropoff_coords.longitude,
+        actual_dropoff_coords.latitude,
+      ],
+    });
+
+    if (rpcError) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message: rpcError.message,
+        code: "RIDE_UPDATE_FAILED",
+      });
+      return;
+    }
+
+    // Update driver status
+    const { error: updateDriverError } = await supabase
+      .from("drivers")
+      .update({ availability_status: "waiting_for_payment" })
+      .eq("id", driver_id);
+
+    if (updateDriverError) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message: updateDriverError.message,
+        code: "DRIVER_UPDATE_FAILED",
+      });
+      return;
+    }
+
+    const { data: riderData } = await supabase
+      .from("riders")
+      .select("push_token")
+      .eq("id", ride.rider_id)
+      .single();
+
+    const messageData = {
+      type: "RIDE_PAYMENT_PENDING",
+      rideId: ride_id,
+      driverId: driver_id,
+      status: "payment_in_progress",
+    };
+
+    if (riderData?.push_token) {
+      try {
+        await sendPushNotification(riderData.push_token, {
+          title: "Perjalanan selesai",
+          body: "Anda telah tiba di tujuan. Silakan lakukan pembayaran.",
+          data: messageData,
+        });
+      } catch (err) {
+        console.error("Push notification failed:", err);
+      }
+    }
+
+    await publisher.publish(
+      `rider:${ride.rider_id}`,
+      JSON.stringify(messageData)
+    );
+
+    res.status(200).json({
+      status: 200,
+      code: "RIDE_PAYMENT_PENDING",
+      message: "Dropoff confirmed, waiting for rider payment.",
+    });
+  } catch (err) {
+    console.error("Unexpected error in confirmDropoffByDriver:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while confirming dropoff.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};
+
+export const confirmPaymentByDriver = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { ride_id, driver_id } = req.body;
+
+  if (!ride_id || !driver_id) {
+    res.status(400).json({
+      status: 400,
+      error: "Bad Request",
+      message: "Missing required fields: ride_id and driver_id.",
+      code: "MISSING_FIELDS",
+    });
+    return;
+  }
+
+  try {
+    const { data: ride, error: rideError } = await supabase
+      .from("rides")
+      .select("id, status, driver_id, rider_id")
+      .eq("id", ride_id)
+      .single();
+
+    if (rideError || !ride) {
+      res.status(404).json({
+        status: 404,
+        error: "Not Found",
+        message: rideError?.message ?? "Ride not found.",
+        code: "RIDE_NOT_FOUND",
+      });
+      return;
+    }
+
+    if (ride.driver_id !== driver_id) {
+      res.status(403).json({
+        status: 403,
+        error: "Forbidden",
+        message: "This driver is not assigned to the ride.",
+        code: "UNAUTHORIZED_DRIVER",
+      });
+      return;
+    }
+
+    if (ride.status !== "payment_in_progress") {
+      res.status(409).json({
+        status: 409,
+        error: "Conflict",
+        message:
+          "Ride must be in 'payment_in_progress' state to confirm payment.",
+        code: "INVALID_RIDE_STATUS",
+      });
+      return;
+    }
+
+    const { error: updateRideError } = await supabase
+      .from("rides")
+      .update({ status: "completed" })
+      .eq("id", ride_id);
+
+    const { error: updateDriverError } = await supabase
+      .from("drivers")
+      .update({ availability_status: "available" })
+      .eq("id", driver_id);
+
+    if (updateRideError || updateDriverError) {
+      res.status(400).json({
+        status: 400,
+        error: "Update Failed",
+        message:
+          updateRideError?.message ??
+          updateDriverError?.message ??
+          "Failed to update ride or driver status.",
+        code: "UPDATE_FAILED",
+      });
+      return;
+    }
+
+    await publisher.publish(
+      `rider:${ride.rider_id}`,
+      JSON.stringify({
+        type: "RIDE_COMPLETED",
+        rideId: ride_id,
+        driverId: driver_id,
+        status: "completed",
+      })
+    );
+
+    res.status(200).json({
+      status: 200,
+      code: "RIDE_COMPLETED",
+      message: "Payment confirmed. Ride is now completed.",
+    });
+  } catch (err) {
+    console.error("Unexpected error in confirmPaymentByDriver:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while confirming payment.",
+      code: "INTERNAL_ERROR",
     });
   }
 };
