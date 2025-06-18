@@ -150,7 +150,7 @@ router.post("/calculate", calculateFare);
  * /drivers/nearby:
  *   post:
  *     summary: Get nearby drivers based on pickup location
- *     tags: [Driver]
+ *     tags: [Fare]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
