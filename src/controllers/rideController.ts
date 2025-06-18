@@ -115,12 +115,12 @@ export const createRide = async (
   const [dropoffLon, dropoffLat] = planned_dropoff_coords;
 
   const closestDrivers = await redis.geosearch(
-    "drivers:locations",
+    `drivers:locations:${vehicle_type}`,
     "FROMLONLAT",
     pickupLon,
     pickupLat,
     "BYRADIUS",
-    10,
+    MAX_RADIUS_KM,
     "km",
     "WITHDIST",
     "WITHCOORD",
@@ -177,6 +177,7 @@ export const createRide = async (
     `ride_match_${ride.id}`,
     {
       ride_id: ride.id,
+      vehicle_type,
       distance_m,
       duration_s,
       fare,
@@ -373,7 +374,7 @@ export const confirmRide = async (
     // Fetch ride by ID
     const { data: rideData, error: rideError } = await supabase
       .from("rides")
-      .select("id, rider_id, status, driver_id, match_attempt")
+      .select("id, rider_id, status, driver_id, match_attempt, vehicle_type")
       .eq("id", ride_id)
       .single();
 
@@ -429,7 +430,7 @@ export const confirmRide = async (
     const { error: driverUpdateError } = await supabase
       .from("drivers")
       .update({
-        availability_status: "busy",
+        availability_status: "en_route_to_pickup",
         decline_count: 0,
         missed_requests: 0,
       })
@@ -437,7 +438,7 @@ export const confirmRide = async (
 
     if (driverUpdateError) {
       console.error(
-        `⚠️ Failed to update driver ${driver_id} status to busy:`,
+        `⚠️ Failed to update driver ${driver_id} status to en_route_to_pickup:`,
         driverUpdateError.message
       );
     }
@@ -457,6 +458,7 @@ export const confirmRide = async (
     }
 
     await redis.del(`driver:is_reviewing:${driver_id}`);
+    await redis.zrem(`drivers:locations:${rideData.vehicle_type}`, driver_id);
 
     // Notify rider
     const { data: riderData } = await supabase
@@ -752,7 +754,7 @@ export const cancelByDriver = async (
     // Fetch ride
     const { data: ride, error: rideError } = await supabase
       .from("rides")
-      .select("id, rider_id, status, driver_id, match_attempt")
+      .select("id, rider_id, status, driver_id, match_attempt, vehicle_type")
       .eq("id", ride_id)
       .single();
 
@@ -793,7 +795,7 @@ export const cancelByDriver = async (
     await supabase
       .from("rides")
       .update({
-        status: "requesting_driver",
+        status: "searching",
         driver_id: null,
       })
       .eq("id", ride_id);
@@ -825,7 +827,7 @@ export const cancelByDriver = async (
     }
 
     // Look for a nearby available driver who has not been tried
-    const GEO_KEY = "drivers:locations";
+    const GEO_KEY = `drivers:locations:${ride.vehicle_type}`;
     const MAX_RADIUS_KM = 10;
 
     const geoResults = (await redis.geosearch(
