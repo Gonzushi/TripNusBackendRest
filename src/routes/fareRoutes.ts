@@ -147,7 +147,7 @@ router.post("/calculate", calculateFare);
 
 /**
  * @swagger
- * /drivers/nearby:
+ * /fare/nearby:
  *   post:
  *     summary: Get nearby drivers based on pickup location
  *     tags: [Fare]
