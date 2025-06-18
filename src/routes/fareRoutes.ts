@@ -7,7 +7,7 @@ const router = express.Router();
  * @swagger
  * /fare/calculate:
  *   post:
- *     summary: Calculate fare for a ride based on distance and duration
+ *     summary: Calculate fare for a ride and find nearby drivers
  *     tags: [Fare]
  *     security:
  *       - bearerAuth: []
@@ -20,6 +20,7 @@ const router = express.Router();
  *             required:
  *               - distanceM
  *               - durationSec
+ *               - pickup
  *             properties:
  *               distanceM:
  *                 type: number
@@ -29,9 +30,22 @@ const router = express.Router();
  *                 type: number
  *                 description: Duration in seconds
  *                 example: 900
+ *               pickup:
+ *                 type: object
+ *                 description: Pickup location coordinates
+ *                 required:
+ *                   - latitude
+ *                   - longitude
+ *                 properties:
+ *                   latitude:
+ *                     type: number
+ *                     example: -6.1754
+ *                   longitude:
+ *                     type: number
+ *                     example: 106.8272
  *     responses:
  *       200:
- *         description: Fare calculated successfully
+ *         description: Fare and nearby drivers calculated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -45,7 +59,7 @@ const router = express.Router();
  *                   example: FARE_CALCULATED
  *                 message:
  *                   type: string
- *                   example: Fare calculated successfully.
+ *                   example: Fare and nearby drivers calculated successfully.
  *                 data:
  *                   type: object
  *                   properties:
@@ -54,73 +68,78 @@ const router = express.Router();
  *                       properties:
  *                         service_variant:
  *                           type: string
- *                           example: standard
  *                         fare_breakdown:
  *                           type: object
  *                           properties:
  *                             base_fare:
  *                               type: number
- *                               example: 5000
  *                             distance_fare:
  *                               type: number
- *                               example: 19500
  *                             duration_fare:
  *                               type: number
- *                               example: 7500
  *                             rounding_adjustment:
  *                               type: number
- *                               example: 0
  *                             platform_fee:
  *                               type: number
- *                               example: 2000
  *                         total_fare:
  *                           type: number
- *                           example: 34000
  *                         platform_fee:
  *                           type: number
- *                           example: 2000
  *                         app_commission:
  *                           type: number
- *                           example: 5600
  *                         driver_earning:
  *                           type: number
- *                           example: 26400
  *                     motorcycle:
  *                       type: object
  *                       properties:
  *                         service_variant:
  *                           type: string
- *                           example: standard
  *                         fare_breakdown:
  *                           type: object
  *                           properties:
  *                             base_fare:
  *                               type: number
- *                               example: 3000
  *                             distance_fare:
  *                               type: number
- *                               example: 13000
  *                             duration_fare:
  *                               type: number
- *                               example: 4500
  *                             rounding_adjustment:
  *                               type: number
- *                               example: 0
  *                             platform_fee:
  *                               type: number
- *                               example: 2000
  *                         total_fare:
  *                           type: number
- *                           example: 22500
  *                         platform_fee:
  *                           type: number
- *                           example: 2000
  *                         app_commission:
  *                           type: number
- *                           example: 3588
  *                         driver_earning:
  *                           type: number
- *                           example: 16912
+ *                     nearby_drivers:
+ *                       type: object
+ *                       properties:
+ *                         motorcycle:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               driver_id:
+ *                                 type: string
+ *                               latitude:
+ *                                 type: number
+ *                               longitude:
+ *                                 type: number
+ *                         car:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               driver_id:
+ *                                 type: string
+ *                               latitude:
+ *                                 type: number
+ *                               longitude:
+ *                                 type: number
  *       400:
  *         description: Bad request
  *         content:
@@ -136,7 +155,7 @@ const router = express.Router();
  *                   example: Bad Request
  *                 message:
  *                   type: string
- *                   example: Distance and duration are required and must be valid numbers
+ *                   example: Distance, duration, and pickup location are required
  *                 code:
  *                   type: string
  *                   example: INVALID_PARAMETERS

@@ -1,4 +1,9 @@
 import { Request, Response } from "express";
+import Redis from "ioredis";
+import { redis } from "../index";
+
+const MAX_RADIUS_KM = 10;
+const MAX_RESULTS = 10;
 
 // Fare calculation
 function calculateFareLogic(distanceM: number, durationSec: number) {
@@ -65,22 +70,92 @@ function calculateFareLogic(distanceM: number, durationSec: number) {
   };
 }
 
+// Get nearby drivers for fare calculation
+export async function getNearbyDrivers(
+  redis: Redis,
+  pickup: { latitude: number; longitude: number }
+) {
+  const { latitude, longitude } = pickup;
+
+  const motorcycleResults = (await redis.geosearch(
+    "drivers:locations:motorcycle",
+    "FROMLONLAT",
+    longitude,
+    latitude,
+    "BYRADIUS",
+    MAX_RADIUS_KM,
+    "km",
+    "ASC",
+    "WITHDIST",
+    "WITHCOORD",
+    "COUNT",
+    MAX_RESULTS
+  )) as [string, string, [string, string]][];
+
+  const carResults = (await redis.geosearch(
+    "drivers:locations:car",
+    "FROMLONLAT",
+    longitude,
+    latitude,
+    "BYRADIUS",
+    MAX_RADIUS_KM,
+    "km",
+    "ASC",
+    "WITHDIST",
+    "WITHCOORD",
+    "COUNT",
+    MAX_RESULTS
+  )) as [string, string, [string, string]][];
+
+  return {
+    motorcycle: motorcycleResults.map(([driverId, distance, [lon, lat]]) => ({
+      driver_id: driverId,
+      distance_km: parseFloat(distance),
+      longitude: parseFloat(lon),
+      latitude: parseFloat(lat),
+    })),
+    car: carResults.map(([driverId, distance, [lon, lat]]) => ({
+      driver_id: driverId,
+      distance_km: parseFloat(distance),
+      longitude: parseFloat(lon),
+      latitude: parseFloat(lat),
+    })),
+  };
+}
+
 export const calculateFare = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { distanceM, durationSec } = req.body;
+    const { distanceM, durationSec, pickup } = req.body;
+
+    if (
+      typeof distanceM !== "number" ||
+      typeof durationSec !== "number" ||
+      !pickup?.latitude ||
+      !pickup?.longitude
+    ) {
+      res.status(400).json({
+        status: 400,
+        code: "INVALID_INPUT",
+        message: "Missing or invalid fields: distanceM, durationSec, pickup",
+      });
+      return;
+    }
 
     const fare = calculateFareLogic(distanceM, durationSec);
+    const nearbyDrivers = await getNearbyDrivers(redis, pickup);
 
     res.status(200).json({
       status: 200,
       code: "FARE_CALCULATED",
-      message: "Fare calculated successfully.",
-      data: fare,
+      message: "Fare and nearby drivers calculated successfully.",
+      data: {
+        ...fare,
+        nearby_drivers: nearbyDrivers,
+      },
     });
-    return;
   } catch (error: any) {
     console.error("Internal error:", error?.response?.data || error.message);
     res.status(500).json({
@@ -90,6 +165,5 @@ export const calculateFare = async (
       code: "INTERNAL_ERROR",
       details: error?.response?.data || error.message,
     });
-    return;
   }
 };
