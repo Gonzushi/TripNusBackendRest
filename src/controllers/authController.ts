@@ -466,7 +466,6 @@ export const updatePhoneNumber = async (
       status: 200,
       message: "Phone number updated successfully.",
       code: "UPDATE_PHONE_SUCCESS",
-      data: data,
     });
   } catch (err) {
     console.error("Unexpected error updating phone:", err);
