@@ -646,12 +646,16 @@ router.post("/confirm", confirmRide);
  *               properties:
  *                 status:
  *                   type: number
+ *                   example: 400
  *                 error:
  *                   type: string
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
+ *                   example: "Missing required fields: ride_id and driver_id."
  *                 code:
  *                   type: string
+ *                   example: "MISSING_FIELDS"
  *       403:
  *         description: The driver is not authorized to reject this ride
  *         content:
@@ -680,12 +684,16 @@ router.post("/confirm", confirmRide);
  *               properties:
  *                 status:
  *                   type: number
+ *                   example: 404
  *                 error:
  *                   type: string
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
+ *                   example: "Missing required fields: ride_id and driver_id."
  *                 code:
  *                   type: string
+ *                   example: "MISSING_FIELDS"
  *       500:
  *         description: Unexpected server error or match data missing
  *         content:
@@ -695,12 +703,16 @@ router.post("/confirm", confirmRide);
  *               properties:
  *                 status:
  *                   type: number
+ *                   example: 500
  *                 error:
  *                   type: string
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
+ *                   example: "Missing required fields: ride_id and driver_id."
  *                 code:
  *                   type: string
+ *                   example: "MISSING_FIELDS"
  */
 router.post("/reject", rejectRide);
 
@@ -756,12 +768,16 @@ router.post("/reject", rejectRide);
  *               properties:
  *                 status:
  *                   type: number
+ *                   example: 400
  *                 error:
  *                   type: string
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
+ *                   example: "Missing required fields: ride_id and rider_id."
  *                 code:
  *                   type: string
+ *                   example: "MISSING_FIELDS"
  *       403:
  *         description: The rider is not authorized to cancel this ride
  *         content:
@@ -790,12 +806,16 @@ router.post("/reject", rejectRide);
  *               properties:
  *                 status:
  *                   type: number
+ *                   example: 404
  *                 error:
  *                   type: string
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
+ *                   example: "Missing required fields: ride_id and rider_id."
  *                 code:
  *                   type: string
+ *                   example: "MISSING_FIELDS"
  *       500:
  *         description: Unexpected server error
  *         content:
@@ -808,10 +828,13 @@ router.post("/reject", rejectRide);
  *                   example: 500
  *                 error:
  *                   type: string
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
+ *                   example: "Missing required fields: ride_id and rider_id."
  *                 code:
  *                   type: string
+ *                   example: "MISSING_FIELDS"
  */
 router.post("/cancel-by-rider-before-pickup", cancelRideByRiderBeforePickup);
 
@@ -870,13 +893,13 @@ router.post("/cancel-by-rider-before-pickup", cancelRideByRiderBeforePickup);
  *                   example: 400
  *                 error:
  *                   type: string
- *                   example: Bad Request
+ *                   example: "Missing required fields: ride_id and driver_id."
  *                 message:
  *                   type: string
  *                   example: "Missing required fields: ride_id and driver_id."
  *                 code:
  *                   type: string
- *                   example: MISSING_FIELDS
+ *                   example: "MISSING_FIELDS"
  *       403:
  *         description: The ride is not assigned to the given driver
  *         content:
@@ -889,13 +912,13 @@ router.post("/cancel-by-rider-before-pickup", cancelRideByRiderBeforePickup);
  *                   example: 403
  *                 error:
  *                   type: string
- *                   example: Forbidden
+ *                   example: "Forbidden"
  *                 message:
  *                   type: string
- *                   example: This ride is not assigned to the given driver.
+ *                   example: "This ride is not assigned to the given driver."
  *                 code:
  *                   type: string
- *                   example: UNAUTHORIZED_DRIVER
+ *                   example: "UNAUTHORIZED_DRIVER"
  *       404:
  *         description: Ride not found
  *         content:
@@ -908,13 +931,13 @@ router.post("/cancel-by-rider-before-pickup", cancelRideByRiderBeforePickup);
  *                   example: 404
  *                 error:
  *                   type: string
- *                   example: Not Found
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
- *                   example: Ride not found.
+ *                   example: "Missing required fields: ride_id and driver_id."
  *                 code:
  *                   type: string
- *                   example: RIDE_NOT_FOUND
+ *                   example: "MISSING_FIELDS"
  *       409:
  *         description: Ride is not in the correct status
  *         content:
@@ -927,13 +950,13 @@ router.post("/cancel-by-rider-before-pickup", cancelRideByRiderBeforePickup);
  *                   example: 409
  *                 error:
  *                   type: string
- *                   example: Conflict
+ *                   example: "Conflict"
  *                 message:
  *                   type: string
- *                   example: Ride is not in 'driver_accepted' status.
+ *                   example: "Ride is not in 'driver_accepted' status."
  *                 code:
  *                   type: string
- *                   example: INVALID_STATUS
+ *                   example: "INVALID_STATUS"
  *       500:
  *         description: Internal server error
  *         content:
@@ -946,13 +969,13 @@ router.post("/cancel-by-rider-before-pickup", cancelRideByRiderBeforePickup);
  *                   example: 500
  *                 error:
  *                   type: string
- *                   example: Internal Server Error
+ *                   example: "Internal Server Error"
  *                 message:
  *                   type: string
- *                   example: An unexpected error occurred while cancelling the ride.
+ *                   example: "An unexpected error occurred while cancelling the ride."
  *                 code:
  *                   type: string
- *                   example: INTERNAL_ERROR
+ *                   example: "INTERNAL_ERROR"
  */
 router.post("/cancel-by-driver", cancelByDriver);
 
@@ -1116,13 +1139,13 @@ router.get("/active-ride-by-driver", getRideDriver);
  *                   example: 400
  *                 code:
  *                   type: string
- *                   example: MISSING_FIELDS
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
- *                   example: Missing required fields: ride_id and driver_id.
+ *                   example: "Missing required fields: ride_id and driver_id."
  *                 error:
  *                   type: string
- *                   example: Bad Request
+ *                   example: "Bad Request"
  *       403:
  *         description: Unauthorized driver attempting to confirm arrival
  *         content:
@@ -1138,10 +1161,10 @@ router.get("/active-ride-by-driver", getRideDriver);
  *                   example: UNAUTHORIZED_DRIVER
  *                 message:
  *                   type: string
- *                   example: This driver is not assigned to the ride.
+ *                   example: "This driver is not assigned to the ride."
  *                 error:
  *                   type: string
- *                   example: Forbidden
+ *                   example: "Forbidden"
  *       404:
  *         description: Ride not found
  *         content:
@@ -1157,10 +1180,10 @@ router.get("/active-ride-by-driver", getRideDriver);
  *                   example: RIDE_NOT_FOUND
  *                 message:
  *                   type: string
- *                   example: Ride not found.
+ *                   example: "Ride not found."
  *                 error:
  *                   type: string
- *                   example: Not Found
+ *                   example: "Not Found"
  *       409:
  *         description: Ride is not in a valid state to confirm arrival
  *         content:
@@ -1176,10 +1199,10 @@ router.get("/active-ride-by-driver", getRideDriver);
  *                   example: INVALID_RIDE_STATUS
  *                 message:
  *                   type: string
- *                   example: Ride must be in 'driver_accepted' state to mark as arrived.
+ *                   example: "Ride must be in 'driver_accepted' state to mark as arrived."
  *                 error:
  *                   type: string
- *                   example: Conflict
+ *                   example: "Conflict"
  *       500:
  *         description: Internal server error
  *         content:
@@ -1195,10 +1218,10 @@ router.get("/active-ride-by-driver", getRideDriver);
  *                   example: INTERNAL_ERROR
  *                 message:
  *                   type: string
- *                   example: An unexpected error occurred while confirming arrival.
+ *                   example: "An unexpected error occurred while confirming arrival."
  *                 error:
  *                   type: string
- *                   example: Internal Server Error
+ *                   example: "Internal Server Error"
  */
 router.post("/driver-arrived", driverArrivedAtPickup);
 
@@ -1270,13 +1293,13 @@ router.post("/driver-arrived", driverArrivedAtPickup);
  *                   example: 400
  *                 code:
  *                   type: string
- *                   example: MISSING_FIELDS
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
- *                   example: Missing required fields: ride_id, driver_id, actual_pickup_coords.
+ *                   example: "Missing required fields: ride_id, driver_id, actual_pickup_coords."
  *                 error:
  *                   type: string
- *                   example: Bad Request
+ *                   example: "Bad Request"
  *       403:
  *         description: Driver is not authorized to update this ride
  *         content:
@@ -1292,10 +1315,10 @@ router.post("/driver-arrived", driverArrivedAtPickup);
  *                   example: UNAUTHORIZED_DRIVER
  *                 message:
  *                   type: string
- *                   example: This driver is not assigned to the ride.
+ *                   example: "This driver is not assigned to the ride."
  *                 error:
  *                   type: string
- *                   example: Forbidden
+ *                   example: "Forbidden"
  *       404:
  *         description: Ride not found
  *         content:
@@ -1311,10 +1334,10 @@ router.post("/driver-arrived", driverArrivedAtPickup);
  *                   example: RIDE_NOT_FOUND
  *                 message:
  *                   type: string
- *                   example: Ride not found.
+ *                   example: "Ride not found."
  *                 error:
  *                   type: string
- *                   example: Not Found
+ *                   example: "Not Found"
  *       409:
  *         description: Ride is not in the correct state to be updated
  *         content:
@@ -1330,10 +1353,10 @@ router.post("/driver-arrived", driverArrivedAtPickup);
  *                   example: INVALID_RIDE_STATUS
  *                 message:
  *                   type: string
- *                   example: Ride must be in 'driver_arrived' state to confirm pickup.
+ *                   example: "Ride must be in 'driver_arrived' state to confirm pickup."
  *                 error:
  *                   type: string
- *                   example: Conflict
+ *                   example: "Conflict"
  *       500:
  *         description: Unexpected server error
  *         content:
@@ -1349,10 +1372,7 @@ router.post("/driver-arrived", driverArrivedAtPickup);
  *                   example: INTERNAL_ERROR
  *                 message:
  *                   type: string
- *                   example: An unexpected error occurred while confirming the pickup.
- *                 error:
- *                   type: string
- *                   example: Internal Server Error
+ *                   example: "An unexpected error occurred while confirming the pickup."
  */
 router.post("/confirm-pickup", confirmPickupByDriver);
 
@@ -1425,13 +1445,13 @@ router.post("/confirm-pickup", confirmPickupByDriver);
  *                   example: 400
  *                 code:
  *                   type: string
- *                   example: MISSING_FIELDS
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
- *                   example: Missing required fields: ride_id, driver_id, actual_dropoff_coords.
+ *                   example: "Missing required fields: ride_id, driver_id, actual_dropoff_coords."
  *                 error:
  *                   type: string
- *                   example: Bad Request
+ *                   example: "Bad Request"
  *       403:
  *         description: Driver is not assigned to the ride
  *         content:
@@ -1447,10 +1467,10 @@ router.post("/confirm-pickup", confirmPickupByDriver);
  *                   example: UNAUTHORIZED_DRIVER
  *                 message:
  *                   type: string
- *                   example: This driver is not assigned to the ride.
+ *                   example: "This driver is not assigned to the ride."
  *                 error:
  *                   type: string
- *                   example: Forbidden
+ *                   example: "Forbidden"
  *       404:
  *         description: Ride not found
  *         content:
@@ -1466,10 +1486,10 @@ router.post("/confirm-pickup", confirmPickupByDriver);
  *                   example: RIDE_NOT_FOUND
  *                 message:
  *                   type: string
- *                   example: Ride not found.
+ *                   example: "Ride not found."
  *                 error:
  *                   type: string
- *                   example: Not Found
+ *                   example: "Not Found"
  *       409:
  *         description: Ride is not in a valid state to confirm dropoff
  *         content:
@@ -1485,10 +1505,10 @@ router.post("/confirm-pickup", confirmPickupByDriver);
  *                   example: INVALID_RIDE_STATUS
  *                 message:
  *                   type: string
- *                   example: Ride must be in 'in_progress' state to confirm dropoff.
+ *                   example: "Ride must be in 'in_progress' state to confirm dropoff."
  *                 error:
  *                   type: string
- *                   example: Conflict
+ *                   example: "Conflict"
  *       500:
  *         description: Internal server error
  *         content:
@@ -1504,10 +1524,7 @@ router.post("/confirm-pickup", confirmPickupByDriver);
  *                   example: INTERNAL_ERROR
  *                 message:
  *                   type: string
- *                   example: An unexpected error occurred while confirming dropoff.
- *                 error:
- *                   type: string
- *                   example: Internal Server Error
+ *                   example: "An unexpected error occurred while confirming dropoff."
  */
 router.post("/confirm-dropoff", confirmDropoffByDriver);
 
@@ -1566,10 +1583,10 @@ router.post("/confirm-dropoff", confirmDropoffByDriver);
  *                   example: 400
  *                 code:
  *                   type: string
- *                   example: MISSING_FIELDS
+ *                   example: "Bad Request"
  *                 message:
  *                   type: string
- *                   example: Missing required fields: ride_id and driver_id.
+ *                   example: "Missing required fields: ride_id and driver_id."
  *       403:
  *         description: Driver is not assigned to the ride
  *         content:
@@ -1585,7 +1602,7 @@ router.post("/confirm-dropoff", confirmDropoffByDriver);
  *                   example: UNAUTHORIZED_DRIVER
  *                 message:
  *                   type: string
- *                   example: This driver is not assigned to the ride.
+ *                   example: "This driver is not assigned to the ride."
  *       404:
  *         description: Ride not found
  *         content:
@@ -1601,7 +1618,7 @@ router.post("/confirm-dropoff", confirmDropoffByDriver);
  *                   example: RIDE_NOT_FOUND
  *                 message:
  *                   type: string
- *                   example: Ride not found.
+ *                   example: "Ride not found."
  *       409:
  *         description: Invalid ride status for payment confirmation
  *         content:
@@ -1617,7 +1634,7 @@ router.post("/confirm-dropoff", confirmDropoffByDriver);
  *                   example: INVALID_RIDE_STATUS
  *                 message:
  *                   type: string
- *                   example: Ride must be in 'payment_in_progress' state to confirm payment.
+ *                   example: "Ride must be in 'payment_in_progress' state to confirm payment."
  *       500:
  *         description: Internal server error
  *         content:
@@ -1633,7 +1650,7 @@ router.post("/confirm-dropoff", confirmDropoffByDriver);
  *                   example: INTERNAL_ERROR
  *                 message:
  *                   type: string
- *                   example: An unexpected error occurred while confirming payment.
+ *                   example: "An unexpected error occurred while confirming payment."
  */
 router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
 
