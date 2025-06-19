@@ -1022,6 +1022,7 @@ export const getRideRider = async (
           vehicle_color,
           vehicle_plate_number,
           profile_picture_url,
+          completed_rides,
           users (
             phone
           )
@@ -1145,6 +1146,8 @@ export const getRideDriver = async (
           first_name,
           last_name,
           rating,
+          completed_rides,
+          profile_picture_url,
           users (
             phone
           )
