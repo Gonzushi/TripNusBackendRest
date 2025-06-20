@@ -1499,6 +1499,7 @@ export const confirmDropoffByDriver = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  console.log("🔵 confirmDropoffByDriver", req.body);
   const { ride_id, driver_id, actual_dropoff_coords } = req.body;
 
   if (
@@ -1558,7 +1559,9 @@ export const confirmDropoffByDriver = async (
     const { error: rpcError } = await supabase.rpc("ride_update", {
       p_ride_id: ride_id,
       p_driver_id: driver_id,
+      p_ended_at: new Date().toISOString(),
       p_status: "payment_in_progress",
+      p_actual_pickup_coords: null,
       p_actual_dropoff_coords: [
         actual_dropoff_coords.longitude,
         actual_dropoff_coords.latitude,
