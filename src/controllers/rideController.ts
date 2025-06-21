@@ -1752,6 +1752,7 @@ export const getRideHistory = async (
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = (page - 1) * limit;
+    const status = (req.query.status as string)?.toLowerCase() || "all";
 
     if (!authId) {
       res.status(400).json({
@@ -1766,7 +1767,7 @@ export const getRideHistory = async (
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-    // Step 1: get rider_id from auth_id
+    // Step 1: Get rider_id from auth_id
     const { data: riderResult, error: riderError } = await supabase
       .from("riders")
       .select("id")
@@ -1785,8 +1786,8 @@ export const getRideHistory = async (
 
     const riderId = riderResult.id;
 
-    // Step 2: Get rides (past 1 year, completed or cancelled)
-    const { data: rides, error: rideError } = await supabase
+    // Step 2: Get rides (filtering status inline for consistent pagination)
+    const rideQuery = supabase
       .from("rides")
       .select(
         `
@@ -1809,6 +1810,12 @@ export const getRideHistory = async (
       .order("started_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
+    if (status === "completed" || status === "cancelled") {
+      rideQuery.eq("status", status); // inline filter
+    }
+
+    const { data: rides, error: rideError } = await rideQuery;
+
     if (rideError) {
       res.status(500).json({
         status: 500,
@@ -1821,7 +1828,7 @@ export const getRideHistory = async (
 
     const rideIds = rides.map((r) => r.id);
 
-    // Step 3: Get reviews written by the rider for those rides
+    // Step 3: Get matching reviews
     const { data: reviews, error: reviewError } = await supabase
       .from("reviews")
       .select("ride_id, rating, comment")

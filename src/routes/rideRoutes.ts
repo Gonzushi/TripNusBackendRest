@@ -1678,6 +1678,14 @@ router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
  *         schema:
  *           type: integer
  *           default: 10
+ *       - name: status
+ *         in: query
+ *         description: Filter by ride status (`all`, `completed`, `cancelled`)
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [all, completed, cancelled]
+ *           default: all
  *     responses:
  *       200:
  *         description: Ride history fetched successfully
