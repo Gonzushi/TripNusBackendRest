@@ -1806,7 +1806,6 @@ export const getRideHistory = async (
       )
       .eq("rider_id", riderId)
       .gte("started_at", oneYearAgo.toISOString())
-      .in("status", ["completed", "cancelled"])
       .order("started_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
