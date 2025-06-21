@@ -1659,23 +1659,25 @@ router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
  * @swagger
  * /ride/history:
  *   get:
- *     summary: Get ride history for the authenticated rider
+ *     summary: Get past ride history of the rider for the past 1 year
  *     tags: [Ride]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: query
- *         name: page
+ *       - name: page
+ *         in: query
+ *         description: Page number for pagination
+ *         required: false
  *         schema:
  *           type: integer
  *           default: 1
- *         description: Page number for pagination
- *       - in: query
- *         name: limit
+ *       - name: limit
+ *         in: query
+ *         description: Number of records per page
+ *         required: false
  *         schema:
  *           type: integer
  *           default: 10
- *         description: Number of rides per page
  *     responses:
  *       200:
  *         description: Ride history fetched successfully
@@ -1693,69 +1695,66 @@ router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
  *                 message:
  *                   type: string
  *                   example: Ride history fetched successfully
- *                 pagination:
+ *                 data:
  *                   type: object
  *                   properties:
- *                     currentPage:
- *                       type: integer
- *                       example: 1
- *                     totalPages:
- *                       type: integer
- *                       example: 5
- *                     totalRecords:
- *                       type: integer
- *                       example: 50
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                         format: uuid
- *                         example: "b1234f24-e29b-11d4-a716-446655440000"
- *                       service_variant:
- *                         type: string
- *                         example: "GoRide"
- *                       distance_m:
- *                         type: integer
- *                         example: 2800
- *                       duration_s:
- *                         type: integer
- *                         example: 720
- *                       status:
- *                         type: string
- *                         example: "completed"
- *                       planned_pickup_address:
- *                         type: string
- *                         example: "Jl. Sudirman No. 23, Jakarta"
- *                       planned_dropoff_address:
- *                         type: string
- *                         example: "Jl. Gatot Subroto No. 45, Jakarta"
- *                       fare:
- *                         type: integer
- *                         example: 15000
- *                       status_reason:
- *                         type: string
- *                         nullable: true
- *                         example: null
- *                       vehicle_type:
- *                         type: string
- *                         example: "motor"
- *                       started_at:
- *                         type: string
- *                         format: date-time
- *                         example: "2024-06-21T10:00:00Z"
- *                       ended_at:
- *                         type: string
- *                         format: date-time
- *                         example: "2024-06-21T10:12:00Z"
- *                       rating:
- *                         type: integer
- *                         nullable: true
- *                         example: 5
+ *                     rides:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           service_variant:
+ *                             type: string
+ *                           distance_m:
+ *                             type: integer
+ *                           duration_s:
+ *                             type: integer
+ *                           status:
+ *                             type: string
+ *                           status_reason:
+ *                             type: string
+ *                             nullable: true
+ *                           planned_pickup_address:
+ *                             type: string
+ *                           planned_dropoff_address:
+ *                             type: string
+ *                           fare:
+ *                             type: integer
+ *                           vehicle_type:
+ *                             type: string
+ *                           started_at:
+ *                             type: string
+ *                             format: date-time
+ *                           ended_at:
+ *                             type: string
+ *                             format: date-time
+ *                             nullable: true
+ *                           review:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               rating:
+ *                                 type: integer
+ *                               comment:
+ *                                 type: string
+ *                                 nullable: true
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                           example: 1
+ *                         limit:
+ *                           type: integer
+ *                           example: 10
+ *                         hasMore:
+ *                           type: boolean
+ *                           example: true
  *       400:
- *         description: Missing authentication or bad request
+ *         description: Auth ID is missing
  *         content:
  *           application/json:
  *             schema:
@@ -1770,8 +1769,24 @@ router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
  *                 message:
  *                   type: string
  *                   example: Auth ID is required
+ *       404:
+ *         description: Rider not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 code:
+ *                   type: string
+ *                   example: RIDER_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Rider not found
  *       500:
- *         description: Unexpected server error
+ *         description: Unexpected error occurred
  *         content:
  *           application/json:
  *             schema:

@@ -1858,11 +1858,13 @@ export const getRideHistory = async (
       status: 200,
       code: "RIDE_HISTORY_FETCHED",
       message: "Ride history fetched successfully",
-      data: enrichedRides,
-      pagination: {
-        page,
-        limit,
-        hasMore: enrichedRides.length === limit,
+      data: {
+        rides: enrichedRides,
+        pagination: {
+          page,
+          limit,
+          hasMore: enrichedRides.length === limit,
+        },
       },
     });
   } catch (error) {
