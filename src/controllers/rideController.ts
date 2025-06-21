@@ -1792,6 +1792,7 @@ export const getRideHistory = async (
       .select(
         `
         id,
+        user_reference_id,
         service_variant,
         distance_m,
         duration_s,

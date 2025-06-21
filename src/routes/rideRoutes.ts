@@ -1714,6 +1714,9 @@ router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
  *                           id:
  *                             type: string
  *                             format: uuid
+ *                           user_reference_id:
+ *                             type: string
+ *                             format: string 
  *                           service_variant:
  *                             type: string
  *                           distance_m:
