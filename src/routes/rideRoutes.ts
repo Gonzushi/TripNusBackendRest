@@ -12,6 +12,7 @@ import {
   confirmPickupByDriver,
   confirmDropoffByDriver,
   confirmPaymentByDriver,
+  getRideHistory,
 } from "../controllers/rideController";
 
 const router = express.Router();
@@ -1653,5 +1654,139 @@ router.post("/confirm-dropoff", confirmDropoffByDriver);
  *                   example: "An unexpected error occurred while confirming payment."
  */
 router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
+
+/**
+ * @swagger
+ * /ride/history:
+ *   get:
+ *     summary: Get ride history for the authenticated rider
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of rides per page
+ *     responses:
+ *       200:
+ *         description: Ride history fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_HISTORY_FETCHED
+ *                 message:
+ *                   type: string
+ *                   example: Ride history fetched successfully
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                       example: 1
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 5
+ *                     totalRecords:
+ *                       type: integer
+ *                       example: 50
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         example: "b1234f24-e29b-11d4-a716-446655440000"
+ *                       service_variant:
+ *                         type: string
+ *                         example: "GoRide"
+ *                       distance_m:
+ *                         type: integer
+ *                         example: 2800
+ *                       duration_s:
+ *                         type: integer
+ *                         example: 720
+ *                       status:
+ *                         type: string
+ *                         example: "completed"
+ *                       planned_pickup_address:
+ *                         type: string
+ *                         example: "Jl. Sudirman No. 23, Jakarta"
+ *                       planned_dropoff_address:
+ *                         type: string
+ *                         example: "Jl. Gatot Subroto No. 45, Jakarta"
+ *                       fare:
+ *                         type: integer
+ *                         example: 15000
+ *                       status_reason:
+ *                         type: string
+ *                         nullable: true
+ *                         example: null
+ *                       vehicle_type:
+ *                         type: string
+ *                         example: "motor"
+ *                       started_at:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2024-06-21T10:00:00Z"
+ *                       ended_at:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2024-06-21T10:12:00Z"
+ *                       rating:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 5
+ *       400:
+ *         description: Missing authentication or bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 code:
+ *                   type: string
+ *                   example: AUTH_ID_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Auth ID is required
+ *       500:
+ *         description: Unexpected server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_SERVER_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while fetching the ride history.
+ */
+router.get("/history", getRideHistory);
 
 export default router;
