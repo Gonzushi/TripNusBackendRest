@@ -286,3 +286,53 @@ export const updateProfile = async (
     });
   }
 };
+
+export const getRiderProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const authId = req.user?.sub;
+
+  if (!authId) {
+    res.status(401).json({
+      status: 401,
+      error: "Unauthorized",
+      message: "User ID not found in request context.",
+      code: "USER_NOT_FOUND",
+    });
+    return;
+  }
+
+  try {
+    const { data: riderData, error: riderError } = await supabase
+      .from("riders")
+      .select("*")
+      .eq("auth_id", authId)
+      .single();
+
+    if (riderError || !riderData) {
+      res.status(404).json({
+        status: 404,
+        error: "Not Found",
+        message: "Rider not found.",
+        code: "RIDER_NOT_FOUND",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: "Rider profile fetched successfully",
+      code: "PROFILE_FETCHED",
+      data: riderData,
+    });
+  } catch (err) {
+    console.error("Unexpected error in getRiderProfile:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "An unexpected error occurred while fetching the profile.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};

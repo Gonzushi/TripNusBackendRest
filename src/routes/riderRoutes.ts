@@ -4,6 +4,7 @@ import {
   createProfile,
   uploadProfilePicture,
   updateProfile,
+  getRiderProfile,
 } from "../controllers/riderController";
 
 const upload = multer();
@@ -355,5 +356,55 @@ router.post("/picture", upload.single("file"), uploadProfilePicture);
  *                   example: INTERNAL_ERROR
  */
 router.patch("/profile", updateProfile);
+
+/**
+ * @swagger
+ * /rider/profile:
+ *   get:
+ *     summary: Get rider profile
+ *     description: Retrieves the authenticated rider's profile information using their auth ID.
+ *     tags: [Rider]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Rider profile fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_DATA_FETCHED
+ *                 message:
+ *                   type: string
+ *                   example: Ride data fetched successfully
+ *                 data:
+ *                   $ref: '#/components/schemas/Rider'
+ *       500:
+ *         description: Failed to fetch rider data or internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: FAILED_TO_FETCH_RIDER_DATA
+ *                 message:
+ *                   type: string
+ *                   example: Failed to fetch rider data
+ *                 error:
+ *                   type: string
+ *                   example: Failed to fetch rider data
+ */
+router.get("/profile", getRiderProfile);
 
 export default router;
