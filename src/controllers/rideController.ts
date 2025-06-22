@@ -312,6 +312,9 @@ export const updateRide = async (
               updates.p_actual_dropoff_coords = req.body[field];
             }
             break;
+          case "actual_payment_method":
+            updates.p_actual_payment_method = req.body[field];
+            break;
         }
       }
     }
