@@ -33,6 +33,7 @@ export const createRide = async (
     "planned_pickup_address",
     "planned_dropoff_coords",
     "planned_dropoff_address",
+    "planned_payment_method",
   ];
 
   const missingFields = requiredFields.filter((f) => req.body[f] === undefined);
@@ -93,6 +94,7 @@ export const createRide = async (
     planned_pickup_address,
     planned_dropoff_coords,
     planned_dropoff_address,
+    planned_payment_method,
   } = req.body;
 
   if (
@@ -158,6 +160,7 @@ export const createRide = async (
     p_dropoff_lon: dropoffLon,
     p_dropoff_lat: dropoffLat,
     p_dropoff_address: planned_dropoff_address,
+    p_actual_payment_method: planned_payment_method,
   });
 
   if (error || !data || !data[0]) {
@@ -223,6 +226,7 @@ export const updateRide = async (
     "ended_at",
     "actual_pickup_coords",
     "actual_dropoff_coords",
+    "actual_payment_method",
   ];
 
   if (!authId) {
@@ -264,6 +268,7 @@ export const updateRide = async (
       p_ended_at?: string | null;
       p_actual_pickup_coords?: number[] | null;
       p_actual_dropoff_coords?: number[] | null;
+      p_actual_payment_method?: string | null;
     } = {
       p_ride_id: rideId,
       p_driver_id: null,
@@ -271,6 +276,7 @@ export const updateRide = async (
       p_ended_at: null,
       p_actual_pickup_coords: null,
       p_actual_dropoff_coords: null,
+      p_actual_payment_method: null,
     };
 
     for (const field of updateFields) {

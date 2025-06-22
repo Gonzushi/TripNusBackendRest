@@ -45,6 +45,7 @@ const router = express.Router();
  *               - planned_pickup_address
  *               - planned_dropoff_coords
  *               - planned_dropoff_address
+ *               - planned_payment_method
  *             properties:
  *               distance_m:
  *                 type: number
@@ -94,6 +95,9 @@ const router = express.Router();
  *               planned_dropoff_address:
  *                 type: string
  *                 example: "Jl. Gatot Subroto, Jakarta"
+ *               planned_payment_method:
+ *                 type: string
+ *                 example: "qris"
  *     responses:
  *       201:
  *         description: Ride created successfully
