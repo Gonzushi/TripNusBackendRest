@@ -160,7 +160,7 @@ export const createRide = async (
     p_dropoff_lon: dropoffLon,
     p_dropoff_lat: dropoffLat,
     p_dropoff_address: planned_dropoff_address,
-    p_actual_payment_method: planned_payment_method,
+    p_planned_payment_method: planned_payment_method,
   });
 
   if (error || !data || !data[0]) {
