@@ -1426,6 +1426,7 @@ export const confirmPickupByDriver = async (
       p_ended_at: null,
       p_actual_pickup_coords: [longitude, latitude], // NOTE: lng, lat order for PostGIS POINT
       p_actual_dropoff_coords: null,
+      p_actual_payment_method: null,
     });
 
     if (rpcError) {
@@ -1572,6 +1573,7 @@ export const confirmDropoffByDriver = async (
         actual_dropoff_coords.longitude,
         actual_dropoff_coords.latitude,
       ],
+      p_actual_payment_method: null,
     });
 
     if (rpcError) {
