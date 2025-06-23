@@ -157,7 +157,6 @@ export const handleXenditWebhook = async (
       ]);
     }
 
-    console.log(`✅ Transaction ${qr_id} marked as ${transactionStatus}`);
     res.status(200).send("OK");
   } catch (err) {
     console.error("❌ Webhook error:", err);
@@ -198,9 +197,6 @@ export const simulateQrPayment = async (
       amount = transaction.amount;
     }
 
-    console.log("🔵 qr_id", qr_id);
-    console.log("🔵 amount", amount);
-
     if (!amount || typeof amount !== "number" || amount <= 0) {
       res.status(400).json({
         status: 400,
@@ -229,8 +225,6 @@ export const simulateQrPayment = async (
     );
 
     const result = await simulateRes.json();
-
-    console.log("🔵 result", simulateRes.status, result);
 
     if (!simulateRes.ok) {
       res.status(simulateRes.status).json({

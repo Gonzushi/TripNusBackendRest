@@ -1165,7 +1165,8 @@ export const getRideDriver = async (
         ),
         drivers (
           auth_id
-        )
+        ),
+        transactions (*)
       `
       )
       .eq("drivers.auth_id", authId)
@@ -1434,7 +1435,6 @@ export const confirmPickupByDriver = async (
       p_actual_payment_method: null,
     });
 
-
     if (rpcError) {
       res.status(400).json({
         status: 400,
@@ -1581,7 +1581,6 @@ export const confirmDropoffByDriver = async (
       ],
       p_actual_payment_method: null,
     });
-
 
     if (rpcError) {
       res.status(400).json({
