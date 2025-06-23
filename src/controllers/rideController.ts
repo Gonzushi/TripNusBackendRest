@@ -3,6 +3,8 @@ import supabase from "../supabaseClient";
 import { redis, publisher } from "../index";
 import { sendPushNotification } from "../services/notificationService";
 import { rideMatchQueue } from "../queues/rideMatchQueue";
+import { nanoid } from "nanoid";
+import { createQris } from "../services/xendit";
 
 const MAX_RADIUS_KM = 10;
 
@@ -1432,6 +1434,7 @@ export const confirmPickupByDriver = async (
       p_actual_payment_method: null,
     });
 
+
     if (rpcError) {
       res.status(400).json({
         status: 400,
@@ -1509,7 +1512,6 @@ export const confirmDropoffByDriver = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  console.log("🔵 confirmDropoffByDriver", req.body);
   const { ride_id, driver_id, actual_dropoff_coords } = req.body;
 
   if (
@@ -1531,11 +1533,12 @@ export const confirmDropoffByDriver = async (
   try {
     const { data: ride, error: rideError } = await supabase
       .from("rides")
-      .select("id, status, driver_id, rider_id")
+      .select("id, status, driver_id, rider_id, fare, planned_payment_method")
       .eq("id", ride_id)
       .single();
 
     if (rideError || !ride) {
+      console.log("🔵 rideError", rideError);
       res.status(404).json({
         status: 404,
         error: "Not Found",
@@ -1565,7 +1568,7 @@ export const confirmDropoffByDriver = async (
       return;
     }
 
-    // Use RPC to update ride
+    // ✅ Update ride status first
     const { error: rpcError } = await supabase.rpc("ride_update", {
       p_ride_id: ride_id,
       p_driver_id: driver_id,
@@ -1579,6 +1582,7 @@ export const confirmDropoffByDriver = async (
       p_actual_payment_method: null,
     });
 
+
     if (rpcError) {
       res.status(400).json({
         status: 400,
@@ -1589,22 +1593,52 @@ export const confirmDropoffByDriver = async (
       return;
     }
 
-    // Update driver status
-    const { error: updateDriverError } = await supabase
+    // ✅ Update driver status
+    await supabase
       .from("drivers")
       .update({ availability_status: "waiting_for_payment" })
       .eq("id", driver_id);
 
-    if (updateDriverError) {
-      res.status(400).json({
-        status: 400,
-        error: "Update Failed",
-        message: updateDriverError.message,
-        code: "DRIVER_UPDATE_FAILED",
+    // ✅ Create transaction
+    const externalId = `ride_${ride.id}_${nanoid(10)}`;
+    let transactionPayload: any = {
+      ride_id: ride.id,
+      account_id: ride.rider_id,
+      account_type: "rider",
+      type: "payment",
+      payment_method: ride.planned_payment_method,
+      amount: ride.fare,
+      currency: "IDR",
+      status: "awaiting_payment",
+    };
+
+    // ✅ If QRIS, generate QR via Xendit
+    if (ride.planned_payment_method === "qris") {
+      const qrisRes = await createQris({
+        externalId: externalId,
+        amount: ride.fare,
+        currency: "IDR",
       });
-      return;
+
+      transactionPayload = {
+        ...transactionPayload,
+        qr_id: qrisRes.id,
+        qr_string: qrisRes.qr_string,
+        qr_reference_id: qrisRes.reference_id,
+        qr_expires_at: qrisRes.expires_at,
+        qr_metadata: qrisRes.metadata,
+      };
     }
 
+    const { error: trxError } = await supabase
+      .from("transactions")
+      .insert([transactionPayload]);
+
+    if (trxError) {
+      console.error("❌ Failed to insert transaction:", trxError);
+    }
+
+    // ✅ Notify rider
     const { data: riderData } = await supabase
       .from("riders")
       .select("push_token")
@@ -1638,7 +1672,7 @@ export const confirmDropoffByDriver = async (
     res.status(200).json({
       status: 200,
       code: "RIDE_PAYMENT_PENDING",
-      message: "Dropoff confirmed, waiting for rider payment.",
+      message: "Dropoff confirmed, payment pending.",
     });
   } catch (err) {
     console.error("Unexpected error in confirmDropoffByDriver:", err);

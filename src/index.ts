@@ -21,6 +21,8 @@ import paymentRoutes from "./routes/paymentRoutes";
 import riderRoutes from "./routes/riderRoutes";
 import rideRoutes from "./routes/rideRoutes";
 import utilsRoutes from "./routes/utilsRoutes";
+import xenditRoutes from "./routes/xenditRoutes";
+import transactionRoutes from "./routes/transactionRoutes";
 
 const app = express();
 export const redis = new Redis(redisConfig);
@@ -39,6 +41,8 @@ app.use("/payment", authenticateUser, paymentRoutes);
 app.use("/ride", authenticateUser, rideRoutes);
 app.use("/rider", authenticateUser, riderRoutes);
 app.use("/utils", utilsRoutes);
+app.use("/xendit", xenditRoutes);
+app.use("/transactions", authenticateUser, transactionRoutes);
 
 // Swagger
 setupSwagger(app);
