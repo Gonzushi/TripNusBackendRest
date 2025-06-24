@@ -2046,6 +2046,7 @@ export const getRideHistoryDriver = async (
         planned_pickup_address,
         planned_dropoff_address,
         fare,
+        driver_earning,
         vehicle_type,
         started_at,
         ended_at
