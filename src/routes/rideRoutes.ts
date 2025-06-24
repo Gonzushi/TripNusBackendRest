@@ -13,6 +13,7 @@ import {
   confirmDropoffByDriver,
   confirmPaymentByDriver,
   getRideHistory,
+  getRideHistoryDriver,
 } from "../controllers/rideController";
 
 const router = express.Router();
@@ -1661,7 +1662,7 @@ router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
 
 /**
  * @swagger
- * /ride/history:
+ * /ride/history/rider:
  *   get:
  *     summary: Get past ride history of the rider for the past 1 year
  *     tags: [Ride]
@@ -1817,6 +1818,166 @@ router.post("/confirm-payment-by-driver", confirmPaymentByDriver);
  *                   type: string
  *                   example: An unexpected error occurred while fetching the ride history.
  */
-router.get("/history", getRideHistory);
+router.get("/history/rider", getRideHistory);
+
+/**
+ * @swagger
+ * /ride/history/driver:
+ *   get:
+ *     summary: Get past ride history of the rider for the past 1 year
+ *     tags: [Ride]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         description: Page number for pagination
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - name: limit
+ *         in: query
+ *         description: Number of records per page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - name: status
+ *         in: query
+ *         description: Filter by ride status (`all`, `completed`, `cancelled`)
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [all, completed, cancelled]
+ *           default: all
+ *     responses:
+ *       200:
+ *         description: Ride history fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 200
+ *                 code:
+ *                   type: string
+ *                   example: RIDE_HISTORY_FETCHED
+ *                 message:
+ *                   type: string
+ *                   example: Ride history fetched successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     rides:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           user_reference_id:
+ *                             type: string
+ *                             format: string 
+ *                           service_variant:
+ *                             type: string
+ *                           distance_m:
+ *                             type: integer
+ *                           duration_s:
+ *                             type: integer
+ *                           status:
+ *                             type: string
+ *                           status_reason:
+ *                             type: string
+ *                             nullable: true
+ *                           planned_pickup_address:
+ *                             type: string
+ *                           planned_dropoff_address:
+ *                             type: string
+ *                           fare:
+ *                             type: integer
+ *                           vehicle_type:
+ *                             type: string
+ *                           started_at:
+ *                             type: string
+ *                             format: date-time
+ *                           ended_at:
+ *                             type: string
+ *                             format: date-time
+ *                             nullable: true
+ *                           review:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               rating:
+ *                                 type: integer
+ *                               comment:
+ *                                 type: string
+ *                                 nullable: true
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                           example: 1
+ *                         limit:
+ *                           type: integer
+ *                           example: 10
+ *                         hasMore:
+ *                           type: boolean
+ *                           example: true
+ *       400:
+ *         description: Auth ID is missing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 400
+ *                 code:
+ *                   type: string
+ *                   example: AUTH_ID_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Auth ID is required
+ *       404:
+ *         description: Rider not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 404
+ *                 code:
+ *                   type: string
+ *                   example: RIDER_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Rider not found
+ *       500:
+ *         description: Unexpected error occurred
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: number
+ *                   example: 500
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_SERVER_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: An unexpected error occurred while fetching the ride history.
+ */
+router.get("/history/driver", getRideHistoryDriver);
 
 export default router;

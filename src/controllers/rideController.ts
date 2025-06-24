@@ -1987,3 +1987,145 @@ export const getRideHistory = async (
     });
   }
 };
+
+export const getRideHistoryDriver = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const authId = req.user?.sub;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+    const status = (req.query.status as string)?.toLowerCase() || "all";
+
+    if (!authId) {
+      res.status(400).json({
+        status: 400,
+        code: "AUTH_ID_NOT_FOUND",
+        message: "Auth ID is required",
+        error: "Auth ID is missing from the request context",
+      });
+      return;
+    }
+
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    // Step 1: Get rider_id from auth_id
+    const { data: driverResult, error: driverError } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("auth_id", authId)
+      .single();
+
+    if (driverError || !driverResult) {
+      res.status(404).json({
+        status: 404,
+        code: "DRIVER_NOT_FOUND",
+        message: "Driver not found",
+        error: driverError?.message || "Driver not found for this user",
+      });
+      return;
+    }
+
+    const driverId = driverResult.id;
+
+    // Step 2: Get rides (filtering status inline for consistent pagination)
+    const driverQuery = supabase
+      .from("rides")
+      .select(
+        `
+        id,
+        user_reference_id,
+        service_variant,
+        distance_m,
+        duration_s,
+        status,
+        status_reason,
+        planned_pickup_address,
+        planned_dropoff_address,
+        fare,
+        vehicle_type,
+        started_at,
+        ended_at
+      `
+      )
+      .eq("driver_id", driverId)
+      .gte("started_at", oneYearAgo.toISOString())
+      .order("started_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (status === "completed" || status === "cancelled") {
+      driverQuery.eq("status", status); // inline filter
+    }
+
+    const { data: rides, error: rideError } = await driverQuery;
+
+    if (rideError) {
+      res.status(500).json({
+        status: 500,
+        code: "FAILED_TO_FETCH_RIDES",
+        message: "Failed to fetch ride history",
+        error: rideError.message,
+      });
+      return;
+    }
+
+    const rideIds = rides.map((r) => r.id);
+
+    // Step 3: Get matching reviews
+    const { data: reviews, error: reviewError } = await supabase
+      .from("reviews")
+      .select("ride_id, rating, comment")
+      .in("ride_id", rideIds)
+      .eq("reviewer_id", driverId)
+      .eq("reviewee_type", "rider");
+
+    if (reviewError) {
+      res.status(500).json({
+        status: 500,
+        code: "FAILED_TO_FETCH_REVIEWS",
+        message: "Failed to fetch reviews",
+        error: reviewError.message,
+      });
+      return;
+    }
+
+    // Step 4: Merge reviews with rides
+    const enrichedRides = rides.map((ride) => {
+      const review = reviews.find((r) => r.ride_id === ride.id);
+      return {
+        ...ride,
+        review: review
+          ? {
+              rating: review.rating,
+              comment: review.comment,
+            }
+          : null,
+      };
+    });
+
+    res.status(200).json({
+      status: 200,
+      code: "RIDE_HISTORY_FETCHED",
+      message: "Ride history fetched successfully",
+      data: {
+        rides: enrichedRides,
+        pagination: {
+          page,
+          limit,
+          hasMore: enrichedRides.length === limit,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Unexpected error in getRideHistory:", error);
+    res.status(500).json({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      message: "An unexpected error occurred while fetching the ride history.",
+      error: (error as Error).message,
+    });
+  }
+};
