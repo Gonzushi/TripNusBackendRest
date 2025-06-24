@@ -108,7 +108,7 @@ export const handleXenditWebhook = async (
       ]);
 
       const messageData = {
-        type: "RIDE_COMPLETED",
+        type: "PAYMENT_SUCCESSFUL",
         rideId: ride.id,
         status: "completed",
       };
