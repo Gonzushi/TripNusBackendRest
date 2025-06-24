@@ -78,7 +78,7 @@ export const handleXenditWebhook = async (
       // 1. Mark ride as completed
       const { error: rideUpdateError } = await supabase.rpc("ride_update", {
         p_ride_id: ride.id,
-        p_status: "completed",
+        p_status: "payment_successful",
         p_ended_at: new Date().toISOString(),
         p_driver_id: null,
         p_actual_payment_method: null,
@@ -93,22 +93,7 @@ export const handleXenditWebhook = async (
         );
       }
 
-      // 2. Update driver status to "available"
-      if (ride.driver_id) {
-        const { error: driverUpdateError } = await supabase
-          .from("drivers")
-          .update({ availability_status: "available" })
-          .eq("id", ride.driver_id);
-
-        if (driverUpdateError) {
-          console.error(
-            "🔴 Failed to update driver status:",
-            driverUpdateError.message
-          );
-        }
-      }
-
-      // 3. Notify rider and driver
+      // 2. Notify rider and driver
       const [{ data: rider }, { data: driver }] = await Promise.all([
         supabase
           .from("riders")
@@ -144,7 +129,7 @@ export const handleXenditWebhook = async (
         });
       }
 
-      // 4. Publish WebSocket messages
+      // 3. Publish WebSocket messages
       await Promise.all([
         publisher.publish(
           `rider:${ride.rider_id}`,
