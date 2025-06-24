@@ -23,6 +23,7 @@ import rideRoutes from "./routes/rideRoutes";
 import utilsRoutes from "./routes/utilsRoutes";
 import xenditRoutes from "./routes/xenditRoutes";
 import transactionRoutes from "./routes/transactionRoutes";
+import reviewRoutes from "./routes/reviewRoutes";
 
 const app = express();
 export const redis = new Redis(redisConfig);
@@ -43,6 +44,7 @@ app.use("/rider", authenticateUser, riderRoutes);
 app.use("/utils", utilsRoutes);
 app.use("/xendit", xenditRoutes);
 app.use("/transactions", authenticateUser, transactionRoutes);
+app.use("/reviews", authenticateUser, reviewRoutes);
 
 // Swagger
 setupSwagger(app);

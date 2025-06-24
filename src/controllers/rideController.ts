@@ -1296,7 +1296,7 @@ export const driverArrivedAtPickup = async (
     const { error: driverUpdateError } = await supabase
       .from("drivers")
       .update({
-        availability_status: "waiting_to_pickup",
+        availability_status: "waiting_at_pickup",
       })
       .eq("id", driver_id);
 
@@ -1703,7 +1703,7 @@ export const confirmPaymentByDriver = async (
   try {
     const { data: ride, error: rideError } = await supabase
       .from("rides")
-      .select("id, status, driver_id, rider_id")
+      .select("id, status, driver_id, rider_id, planned_payment_method")
       .eq("id", ride_id)
       .single();
 
@@ -1727,20 +1727,79 @@ export const confirmPaymentByDriver = async (
       return;
     }
 
-    if (ride.status !== "payment_in_progress") {
+    if (
+      ride.status !== "payment_in_progress" &&
+      ride.status !== "payment_successful"
+    ) {
       res.status(409).json({
         status: 409,
         error: "Conflict",
         message:
-          "Ride must be in 'payment_in_progress' state to confirm payment.",
+          "Ride must be in 'payment_in_progress' or 'payment_successful' state to confirm payment.",
         code: "INVALID_RIDE_STATUS",
       });
       return;
     }
 
+    let actual_payment_method: "cash" | "qris";
+
+    if (ride.planned_payment_method === "cash") {
+      actual_payment_method = "cash";
+    } else {
+      actual_payment_method =
+        ride.status === "payment_successful" ? "qris" : "cash";
+    }
+
+    // Case 1: Rider originally selected QRIS but paid in cash
+    if (
+      ride.planned_payment_method === "qris" &&
+      actual_payment_method === "cash"
+    ) {
+      const { error: txUpdateError } = await supabase
+        .from("transactions")
+        .update({
+          payment_method: "cash",
+          status: "completed",
+          remarks: "QRIS cancelled, rider paid in cash",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("ride_id", ride_id)
+        .eq("type", "payment");
+
+      if (txUpdateError) {
+        console.error(
+          "Failed to update transaction (QRIS fallback to cash):",
+          txUpdateError.message
+        );
+      }
+    }
+
+    // Case 2: Planned payment was cash from the beginning
+    if (ride.planned_payment_method === "cash") {
+      const { error: txCashUpdateError } = await supabase
+        .from("transactions")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("ride_id", ride_id)
+        .eq("type", "payment");
+
+      if (txCashUpdateError) {
+        console.error(
+          "Failed to update cash transaction:",
+          txCashUpdateError.message
+        );
+      }
+    }
+
+    // Finalize ride and driver updates
     const { error: updateRideError } = await supabase
       .from("rides")
-      .update({ status: "completed" })
+      .update({
+        status: "completed",
+        actual_payment_method,
+      })
       .eq("id", ride_id);
 
     const { error: updateDriverError } = await supabase
