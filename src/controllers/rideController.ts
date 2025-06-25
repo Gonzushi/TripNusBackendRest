@@ -400,6 +400,8 @@ export const confirmRide = async (
     }
 
     if (rideData.status !== "requesting_driver") {
+      await redis.del(`driver:is_reviewing:${rideData.driver_id}`);
+      
       res.status(409).json({
         status: 409,
         error: "Conflict",
@@ -722,6 +724,8 @@ export const cancelRideByRiderBeforePickup = async (
     // 🗑️ Remove matching job if any
     const matchAttempt = rideData.match_attempt;
     const { retry_count } = matchAttempt;
+
+    await redis.del(`driver:is_reviewing:${rideData.driver_id}`);
 
     try {
       const jobKey = `ride_match_${ride_id}_retry_${retry_count}`;
