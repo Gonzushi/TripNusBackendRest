@@ -734,7 +734,28 @@ export const cancelRideByRiderBeforePickup = async (
     }
 
     // 🔔 Notify driver if assigned
-    if (rideData.driver_id) {
+    if (rideData.status === "driver_accepted" && rideData.driver_id) {
+      // Update driver status to 'available' first
+      try {
+        const { error: updateError } = await supabase
+          .from("drivers")
+          .update({ availability_status: "available" })
+          .eq("id", rideData.driver_id);
+
+        if (updateError) {
+          console.warn(
+            `⚠️ Failed to update availability status for driver ${rideData.driver_id}:`,
+            updateError
+          );
+        }
+      } catch (err) {
+        console.warn(
+          `⚠️ Unexpected error updating driver status for ${rideData.driver_id}:`,
+          err
+        );
+      }
+
+      // Fetch driver push token
       const { data: driverData, error: driverError } = await supabase
         .from("drivers")
         .select("push_token")
@@ -742,7 +763,6 @@ export const cancelRideByRiderBeforePickup = async (
         .single();
 
       if (driverData?.push_token) {
-        // Send push notification
         try {
           await sendPushNotification(driverData.push_token, {
             title: "Perjalanan dibatalkan",
@@ -756,7 +776,6 @@ export const cancelRideByRiderBeforePickup = async (
         }
       }
 
-      // Send WebSocket event (if you have a publisher setup)
       try {
         await publisher.publish(
           `driver:${rideData.driver_id}`,
