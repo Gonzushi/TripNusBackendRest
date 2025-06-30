@@ -33,7 +33,7 @@ export const handleXenditWebhook = async (
     // Get the transaction
     const { data: transaction, error: fetchError } = await supabase
       .from("transactions")
-      .select("id, ride_id")
+      .select("id, ride_id, type")
       .eq("qr_id", qr_id)
       .single();
 
@@ -50,6 +50,7 @@ export const handleXenditWebhook = async (
         status: transactionStatus,
         completed_at:
           transactionStatus === "completed" ? new Date().toISOString() : null,
+        type: transaction.type,
       })
       .eq("qr_id", qr_id);
 
