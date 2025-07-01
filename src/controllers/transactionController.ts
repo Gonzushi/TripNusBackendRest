@@ -303,8 +303,8 @@ export const requestDriverWithdrawal = async (
       return;
     }
 
-    const { total_topup, total_payout, total_withdrawal } = summary;
-    const actualBalance = total_topup + total_payout - total_withdrawal;
+    const { total_topup, total_payout, total_withdrawal } = summary[0];
+    const actualBalance = total_topup + total_payout + total_withdrawal;
 
     if (actualBalance !== driver.balance) {
       res.status(409).json({

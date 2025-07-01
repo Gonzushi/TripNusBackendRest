@@ -156,7 +156,7 @@ export const handleDisbursementWebhook = async (
 ): Promise<void> => {
   const callbackToken = req.headers["x-callback-token"];
 
-  if (callbackToken !== process.env.XENDIT_DISBURSEMENT_WEBHOOK_TOKEN) {
+  if (callbackToken !== process.env.XENDIT_TEST_WEBHOOK_TOKEN) {
     res.sendStatus(401);
     return;
   }
