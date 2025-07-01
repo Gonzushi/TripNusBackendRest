@@ -30,10 +30,10 @@ export const handleQrPaymentWebhook = async (
       return;
     }
 
-    // Get the transaction
+    // 🔍 Get the transaction
     const { data: transaction, error: fetchError } = await supabase
       .from("transactions")
-      .select("id, ride_id, type")
+      .select("id, ride_id, type, account_id")
       .eq("qr_id", qr_id)
       .single();
 
@@ -43,14 +43,13 @@ export const handleQrPaymentWebhook = async (
       return;
     }
 
-    // Update transaction
+    // ✅ Update transaction status
     const { error: updateTxError } = await supabase
       .from("transactions")
       .update({
         status: transactionStatus,
         completed_at:
           transactionStatus === "completed" ? new Date().toISOString() : null,
-        type: transaction.type,
       })
       .eq("qr_id", qr_id);
 
@@ -60,87 +59,103 @@ export const handleQrPaymentWebhook = async (
       return;
     }
 
-    if (transactionStatus === "completed" && transaction.ride_id) {
-      const { data: ride, error: rideFetchError } = await supabase
-        .from("rides")
-        .select("id, rider_id, driver_id")
-        .eq("id", transaction.ride_id)
-        .single();
+    // 🧾 Handle different types
+    if (transactionStatus === "completed") {
+      if (transaction.type === "payment" && transaction.ride_id) {
+        // 🚕 RIDE PAYMENT FLOW
+        const { data: ride, error: rideFetchError } = await supabase
+          .from("rides")
+          .select("id, rider_id, driver_id")
+          .eq("id", transaction.ride_id)
+          .single();
 
-      if (rideFetchError || !ride) {
-        console.error(
-          "🔴 Ride not found for transaction:",
-          rideFetchError?.message
-        );
-        res.status(404).send("Ride not found");
-        return;
-      }
+        if (rideFetchError || !ride) {
+          console.error(
+            "🔴 Ride not found for transaction:",
+            rideFetchError?.message
+          );
+          res.status(404).send("Ride not found");
+          return;
+        }
 
-      // 1. Mark ride as completed
-      const { error: rideUpdateError } = await supabase.rpc("ride_update", {
-        p_ride_id: ride.id,
-        p_status: "payment_successful",
-        p_ended_at: new Date().toISOString(),
-        p_driver_id: null,
-        p_actual_payment_method: null,
-        p_actual_dropoff_coords: null,
-        p_actual_pickup_coords: null,
-      });
+        // 1. Mark ride as completed
+        await supabase.rpc("ride_update", {
+          p_ride_id: ride.id,
+          p_status: "payment_successful",
+          p_ended_at: new Date().toISOString(),
+          p_driver_id: null,
+          p_actual_payment_method: null,
+          p_actual_dropoff_coords: null,
+          p_actual_pickup_coords: null,
+        });
 
-      if (rideUpdateError) {
-        console.error(
-          "🔴 Failed to update ride status:",
-          rideUpdateError.message
-        );
-      }
+        // 2. Notify rider and driver
+        const [{ data: rider }, { data: driver }] = await Promise.all([
+          supabase
+            .from("riders")
+            .select("push_token")
+            .eq("id", ride.rider_id)
+            .single(),
+          supabase
+            .from("drivers")
+            .select("push_token")
+            .eq("id", ride.driver_id)
+            .single(),
+        ]);
 
-      // 2. Notify rider and driver
-      const [{ data: rider }, { data: driver }] = await Promise.all([
-        supabase
-          .from("riders")
-          .select("push_token")
-          .eq("id", ride.rider_id)
-          .single(),
-        supabase
+        const messageData = {
+          type: "PAYMENT_SUCCESSFUL",
+          rideId: ride.id,
+          status: "completed",
+        };
+
+        if (rider?.push_token) {
+          await sendPushNotification(rider.push_token, {
+            title: "Pembayaran berhasil",
+            body: "Terima kasih telah menggunakan layanan kami!",
+            data: messageData,
+          });
+        }
+
+        if (driver?.push_token) {
+          await sendPushNotification(driver.push_token, {
+            title: "Pembayaran diterima",
+            body: "Anda kini tersedia untuk pesanan baru.",
+            data: messageData,
+          });
+        }
+
+        // 3. WebSocket broadcast
+        await Promise.all([
+          publisher.publish(
+            `rider:${ride.rider_id}`,
+            JSON.stringify(messageData)
+          ),
+          publisher.publish(
+            `driver:${ride.driver_id}`,
+            JSON.stringify(messageData)
+          ),
+        ]);
+      } else if (transaction.type === "topup") {
+        // 💳 TOPUP FLOW
+        const { data: driver } = await supabase
           .from("drivers")
           .select("push_token")
-          .eq("id", ride.driver_id)
-          .single(),
-      ]);
+          .eq("id", transaction.account_id)
+          .single();
 
-      const messageData = {
-        type: "PAYMENT_SUCCESSFUL",
-        rideId: ride.id,
-        status: "completed",
-      };
-
-      if (rider?.push_token) {
-        await sendPushNotification(rider.push_token, {
-          title: "Pembayaran berhasil",
-          body: "Terima kasih telah menggunakan layanan kami!",
-          data: messageData,
-        });
+        if (driver?.push_token) {
+          await sendPushNotification(driver.push_token, {
+            title: "Top-up berhasil",
+            body: "Saldo Anda telah berhasil ditambahkan.",
+            data: {
+              type: "TOPUP_SUCCESSFUL",
+              transactionId: transaction.id,
+              status: "completed",
+            },
+          });
+        }
       }
-
-      if (driver?.push_token) {
-        await sendPushNotification(driver.push_token, {
-          title: "Pembayaran diterima",
-          body: "Anda kini tersedia untuk pesanan baru.",
-          data: messageData,
-        });
-      }
-
-      // 3. Publish WebSocket messages
-      await Promise.all([
-        publisher.publish(
-          `rider:${ride.rider_id}`,
-          JSON.stringify(messageData)
-        ),
-        publisher.publish(
-          `driver:${ride.driver_id}`,
-          JSON.stringify(messageData)
-        ),
-      ]);
     }
 
     res.status(200).send("OK");
@@ -180,7 +195,11 @@ export const handleDisbursementWebhook = async (
     .single();
 
   if (fetchError || !transaction) {
-    console.error("🔴 Transaction not found for:", externalId, fetchError?.message);
+    console.error(
+      "🔴 Transaction not found for:",
+      externalId,
+      fetchError?.message
+    );
     res.status(404).send("Transaction not found");
     return;
   }
