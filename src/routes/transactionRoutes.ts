@@ -262,7 +262,7 @@ router.post("/topup", createTopupTransaction);
  *                   example: Bad Request
  *                 message:
  *                   type: string
- *                   example: Missing or invalid fields: amount, or unauthorized.
+ *                   example: "Missing or invalid fields: amount, or unauthorized."
  *                 code:
  *                   type: string
  *                   example: MISSING_FIELDS
