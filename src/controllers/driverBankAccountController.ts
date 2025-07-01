@@ -74,3 +74,94 @@ export const getDriverBankAccount = async (
     });
   }
 };
+
+/**
+ * POST /bank-accounts
+ * Inserts or updates the authenticated driver's bank account details.
+ */
+export const insertDriverBankAccount = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const authId = req.user?.sub;
+  const { channel_code, account_number, account_holder_name } = req.body;
+
+  if (!authId) {
+    res.status(401).json({
+      status: 401,
+      error: "Unauthorized",
+      message: "Missing authentication token",
+      code: "UNAUTHORIZED",
+    });
+    return;
+  }
+
+  if (!channel_code || !account_number || !account_holder_name) {
+    res.status(400).json({
+      status: 400,
+      error: "Bad Request",
+      message:
+        "Missing required fields: channel_code, account_number, or account_holder_name",
+      code: "MISSING_FIELDS",
+    });
+    return;
+  }
+
+  try {
+    // 1. Get driver ID using authId
+    const { data: driver, error: driverError } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("auth_id", authId)
+      .single();
+
+    if (driverError || !driver) {
+      res.status(404).json({
+        status: 404,
+        error: "Driver Not Found",
+        message: "No driver found for this user",
+        code: "DRIVER_NOT_FOUND",
+      });
+      return;
+    }
+
+    // 2. Insert or update bank account
+    const { data, error: upsertError } = await supabase
+      .from("driver_bank_accounts")
+      .upsert(
+        {
+          driver_id: driver.id,
+          channel_code,
+          account_number,
+          account_holder_name,
+        },
+        { onConflict: "driver_id" }
+      )
+      .select("*")
+      .single();
+
+    if (upsertError) {
+      res.status(500).json({
+        status: 500,
+        error: "Insert Failed",
+        message: upsertError.message,
+        code: "INSERT_FAILED",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: "Bank account saved successfully",
+      data,
+    });
+  } catch (err) {
+    console.error("❌ Error inserting bank account:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "Unexpected error while inserting bank account.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};
