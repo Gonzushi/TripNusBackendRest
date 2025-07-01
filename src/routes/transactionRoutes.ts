@@ -1,6 +1,7 @@
 import express from "express";
 import {
   createTopupTransaction,
+  getDriverTransactions,
   getTransactionByRide,
   requestDriverWithdrawal,
 } from "../controllers/transactionController";
@@ -306,5 +307,99 @@ router.post("/topup", createTopupTransaction);
  *                   example: INTERNAL_ERROR
  */
 router.post("/withdrawal", requestDriverWithdrawal);
+
+/**
+ * @swagger
+ * /transactions/driver:
+ *   get:
+ *     summary: Get active driver transactions (topup or withdrawal)
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [topup, withdrawal]
+ *         required: false
+ *         description: "Filter by transaction type (only one of: topup or withdrawal)"
+ *     responses:
+ *       200:
+ *         description: List of filtered transactions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Transactions fetched successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Transaction'
+ *       401:
+ *         description: Unauthorized - missing or invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 401
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *                 message:
+ *                   type: string
+ *                   example: Missing authentication token
+ *                 code:
+ *                   type: string
+ *                   example: UNAUTHORIZED
+ *       404:
+ *         description: Driver not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 error:
+ *                   type: string
+ *                   example: Driver Not Found
+ *                 message:
+ *                   type: string
+ *                   example: No driver found for this user
+ *                 code:
+ *                   type: string
+ *                   example: DRIVER_NOT_FOUND
+ *       500:
+ *         description: Unexpected server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 message:
+ *                   type: string
+ *                   example: Unexpected error while fetching driver transactions.
+ *                 code:
+ *                   type: string
+ *                   example: INTERNAL_ERROR
+ */
+router.get("/driver", getDriverTransactions);
 
 export default router;

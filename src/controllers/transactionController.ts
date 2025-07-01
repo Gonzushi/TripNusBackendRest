@@ -16,7 +16,7 @@ export const getDriverTransactions = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const EXCLUDED_STATUSES = ["completed", "cancelled", "failed", "expired"];
+  const ALLOWED_STATUSES = ["awaiting_payment"];
   const ALLOWED_TYPES = ["topup", "withdrawal"];
 
   const authId = req.user?.sub;
@@ -50,10 +50,10 @@ export const getDriverTransactions = async (
       return;
     }
 
-    // 2. Filter types
-    const typeFilter =
-      typeQuery?.split(",").filter((t) => ALLOWED_TYPES.includes(t)) ??
-      ALLOWED_TYPES;
+    // 2. Validate and use type filter (single value only)
+    const typeFilter = ALLOWED_TYPES.includes(typeQuery ?? "")
+      ? [typeQuery]
+      : ALLOWED_TYPES;
 
     // 3. Fetch filtered transactions
     const { data: transactions, error: trxError } = await supabase
@@ -62,11 +62,7 @@ export const getDriverTransactions = async (
       .eq("account_id", driver.id)
       .eq("account_type", "driver")
       .in("type", typeFilter)
-      .not(
-        "status",
-        "in",
-        `(${EXCLUDED_STATUSES.map((s) => `'${s}'`).join(",")})`
-      )
+      .in("status", ALLOWED_STATUSES)
       .order("created_at", { ascending: false });
 
     if (trxError) {
