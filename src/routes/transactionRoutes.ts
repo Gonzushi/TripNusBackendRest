@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  cancelTopup,
   createTopupTransaction,
   getDriverTransactions,
   getTransactionByRide,
@@ -401,5 +402,63 @@ router.post("/withdrawal", requestDriverWithdrawal);
  *                   example: INTERNAL_ERROR
  */
 router.get("/driver", getDriverTransactions);
+
+/**
+ * @swagger
+ * /transactions/topup/cancel:
+ *   patch:
+ *     summary: Cancel an awaiting top-up transaction for the driver
+ *     tags: [Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Cancels the most recent 'topup' transaction with status `awaiting_payment`
+ *       for the authenticated driver. No input is required.
+ *     responses:
+ *       200:
+ *         description: Top-up cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Top-up cancelled successfully
+ *                 code:
+ *                   type: string
+ *                   example: TOPUP_CANCELLED
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: 34a37aef-c1fb-4e32-a267-521bb75f1d18
+ *                     amount:
+ *                       type: number
+ *                       example: 50000
+ *       401:
+ *         description: Unauthorized access
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: No top-up transaction found to cancel
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.patch("/topup/cancel", cancelTopup);
 
 export default router;

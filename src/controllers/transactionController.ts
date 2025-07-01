@@ -295,6 +295,101 @@ export const createTopupTransaction = async (
   }
 };
 
+export const cancelTopup = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const authId = req.user?.sub;
+
+  if (!authId) {
+    res.status(401).json({
+      status: 401,
+      error: "Unauthorized",
+      message: "Missing authentication token",
+      code: "UNAUTHORIZED",
+    });
+    return;
+  }
+
+  try {
+    // 1. Get driver by auth_id
+    const { data: driver, error: driverError } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("auth_id", authId)
+      .single();
+
+    if (driverError || !driver) {
+      res.status(404).json({
+        status: 404,
+        error: "Driver Not Found",
+        message: "No driver found for this user",
+        code: "DRIVER_NOT_FOUND",
+      });
+      return;
+    }
+
+    // 2. Find latest awaiting topup transaction
+    const { data: transaction, error: trxError } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("account_id", driver.id)
+      .eq("account_type", "driver")
+      .eq("type", "topup")
+      .eq("status", "awaiting_payment")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (trxError || !transaction) {
+      res.status(404).json({
+        status: 404,
+        error: "Transaction Not Found",
+        message: "No pending top-up transaction found to cancel",
+        code: "NO_ACTIVE_TOPUP",
+      });
+      return;
+    }
+
+    // 3. Cancel transaction
+    const { error: updateError } = await supabase
+      .from("transactions")
+      .update({
+        status: "cancelled",
+        remarks: `Cancelled by driver on ${new Date().toISOString()}`,
+      })
+      .eq("id", transaction.id);
+
+    if (updateError) {
+      res.status(500).json({
+        status: 500,
+        error: "Update Failed",
+        message: updateError.message,
+        code: "CANCEL_UPDATE_FAILED",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: "Top-up cancelled successfully",
+      code: "TOPUP_CANCELLED",
+      data: {
+        id: transaction.id,
+        amount: transaction.amount,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error in cancelTopup:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "Unexpected error while cancelling top-up.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};
+
 export const requestDriverWithdrawal = async (
   req: Request,
   res: Response
