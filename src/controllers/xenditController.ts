@@ -144,17 +144,25 @@ export const handleQrPaymentWebhook = async (
           .eq("id", transaction.account_id)
           .single();
 
+        const messageData = {
+          type: "TOPUP_SUCCESSFUL",
+          transactionId: transaction.id,
+          status: "completed",
+        };
+
         if (driver?.push_token) {
           await sendPushNotification(driver.push_token, {
             title: "Top-up berhasil",
             body: "Saldo Anda telah berhasil ditambahkan.",
-            data: {
-              type: "TOPUP_SUCCESSFUL",
-              transactionId: transaction.id,
-              status: "completed",
-            },
+            data: messageData,
           });
         }
+
+        // 🛰 Send WebSocket to driver
+        await publisher.publish(
+          `driver:${transaction.account_id}`,
+          JSON.stringify(messageData)
+        );
       }
     }
 
