@@ -4,7 +4,7 @@ import supabase from "../supabaseClient";
 import { sendPushNotification } from "../services/notificationService";
 import { publisher } from "../index";
 
-export const handleXenditWebhook = async (
+export const handleQrPaymentWebhook = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -148,6 +148,104 @@ export const handleXenditWebhook = async (
     console.error("❌ Webhook error:", err);
     res.status(500).send("Internal Server Error");
   }
+};
+
+export const handleDisbursementWebhook = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const callbackToken = req.headers["x-callback-token"];
+
+  if (callbackToken !== process.env.XENDIT_DISBURSEMENT_WEBHOOK_TOKEN) {
+    res.sendStatus(401);
+    return;
+  }
+
+  const { event, data } = req.body;
+
+  if (!event || !data?.reference_id || !data?.status) {
+    res.status(400).send("Missing required fields");
+    return;
+  }
+
+  const externalId = data.reference_id;
+  const disbursementId = data.id;
+  const disbursementStatus = data.status; // SUCCEEDED, FAILED, REVERSED
+
+  // 🧾 Fetch transaction by external_id
+  const { data: transaction, error: fetchError } = await supabase
+    .from("transactions")
+    .select("id, account_id, type, status")
+    .eq("disbursement_external_id", externalId)
+    .single();
+
+  if (fetchError || !transaction) {
+    console.error("🔴 Transaction not found for:", externalId, fetchError?.message);
+    res.status(404).send("Transaction not found");
+    return;
+  }
+
+  // ✅ Determine new status
+  let newStatus: "completed" | "failed" | undefined;
+
+  switch (event) {
+    case "payout.succeeded":
+      newStatus = "completed";
+      break;
+    case "payout.failed":
+    case "payout.reversed":
+      newStatus = "failed";
+      break;
+    default:
+      res.status(400).send("Unhandled event type");
+      return;
+  }
+
+  // 📝 Update transaction record
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({
+      status: newStatus,
+      completed_at: newStatus === "completed" ? new Date().toISOString() : null,
+      disbursement_status: disbursementStatus,
+      disbursement_id: disbursementId,
+      type: transaction.type,
+    })
+    .eq("disbursement_external_id", externalId);
+
+  if (updateError) {
+    console.error("🔴 Failed to update transaction:", updateError.message);
+    res.status(500).send("Update failed");
+    return;
+  }
+
+  // 🔔 Push notification to driver
+  const { data: driver, error: driverError } = await supabase
+    .from("drivers")
+    .select("push_token")
+    .eq("id", transaction.account_id)
+    .single();
+
+  if (driver?.push_token) {
+    const isSuccess = newStatus === "completed";
+
+    await sendPushNotification(driver.push_token, {
+      title: isSuccess ? "Penarikan Berhasil" : "Penarikan Gagal",
+      body: isSuccess
+        ? "Dana Anda telah berhasil ditransfer ke rekening Anda."
+        : "Penarikan dana Anda gagal. Silakan coba lagi atau hubungi admin.",
+      data: {
+        type: isSuccess ? "WITHDRAWAL_SUCCESSFUL" : "WITHDRAWAL_FAILED",
+        transactionId: transaction.id,
+      },
+    });
+  }
+
+  if (driverError) {
+    console.warn("⚠️ Could not fetch driver for push:", driverError.message);
+  }
+
+  res.status(200).send("Webhook processed");
 };
 
 export const simulateQrPayment = async (
