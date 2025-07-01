@@ -12,6 +12,89 @@ type DriverWithUser = {
   };
 };
 
+export const getDriverTransactions = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const EXCLUDED_STATUSES = ["completed", "cancelled", "failed", "expired"];
+  const ALLOWED_TYPES = ["topup", "withdrawal"];
+
+  const authId = req.user?.sub;
+  const typeQuery = req.query.type as string | undefined;
+
+  if (!authId) {
+    res.status(401).json({
+      status: 401,
+      error: "Unauthorized",
+      message: "Missing authentication token",
+      code: "UNAUTHORIZED",
+    });
+    return;
+  }
+
+  try {
+    // 1. Get driver by auth_id
+    const { data: driver, error: driverError } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("auth_id", authId)
+      .single();
+
+    if (driverError || !driver) {
+      res.status(404).json({
+        status: 404,
+        error: "Driver Not Found",
+        message: "No driver found for this user",
+        code: "DRIVER_NOT_FOUND",
+      });
+      return;
+    }
+
+    // 2. Filter types
+    const typeFilter =
+      typeQuery?.split(",").filter((t) => ALLOWED_TYPES.includes(t)) ??
+      ALLOWED_TYPES;
+
+    // 3. Fetch filtered transactions
+    const { data: transactions, error: trxError } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("account_id", driver.id)
+      .eq("account_type", "driver")
+      .in("type", typeFilter)
+      .not(
+        "status",
+        "in",
+        `(${EXCLUDED_STATUSES.map((s) => `'${s}'`).join(",")})`
+      )
+      .order("created_at", { ascending: false });
+
+    if (trxError) {
+      res.status(500).json({
+        status: 500,
+        error: "Failed to fetch transactions",
+        message: trxError.message,
+        code: "FETCH_TRANSACTIONS_FAILED",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      status: 200,
+      message: "Transactions fetched successfully",
+      data: transactions,
+    });
+  } catch (err) {
+    console.error("❌ Error in getDriverTransactions:", err);
+    res.status(500).json({
+      status: 500,
+      error: "Internal Server Error",
+      message: "Unexpected error while fetching driver transactions.",
+      code: "INTERNAL_ERROR",
+    });
+  }
+};
+
 export const getTransactionByRide = async (
   req: Request,
   res: Response
