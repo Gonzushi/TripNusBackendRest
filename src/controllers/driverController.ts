@@ -105,7 +105,7 @@ export const uploadPicture = async (
 ): Promise<void> => {
   const authId = req.user?.sub;
   const file = req.file;
-  const photoType = req.body.photoType as string; // 'ktp' | 'license' | 'profile'
+  const photoType = req.body.photoType as string; // 'ktp' | 'license' | 'profile' | 'bank_statement'
 
   if (!authId) {
     res.status(401).json({
@@ -143,6 +143,10 @@ export const uploadPicture = async (
     stnk: {
       pathPrefix: "stnk-pictures",
       updateField: "vehicle_registration_photo_url",
+    },
+    bank_statement: {
+      pathPrefix: "bank-statement-pictures",
+      updateField: "bank_statement_photo_url",
     },
   };
 
