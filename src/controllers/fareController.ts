@@ -6,7 +6,7 @@ function calculateFareLogic(distanceM: number, durationSec: number) {
   const durationMin = durationSec / 60;
 
   const platformFee = 2000;
-  const COMMISSION_RATE = 0.05;
+  const COMMISSION_RATE = 0.08;
 
   // --- Car fare calculation ---
   const carBaseFare = 17000;
