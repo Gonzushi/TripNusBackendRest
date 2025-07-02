@@ -6,31 +6,38 @@ function calculateFareLogic(distanceM: number, durationSec: number) {
   const durationMin = durationSec / 60;
 
   const platformFee = 2000;
+  const COMMISSION_RATE = 0.1;
 
   // --- Car fare calculation ---
-  const carBaseFare = 5000;
-  const carPerKm = 3000;
-  const carPerMin = 500;
-  const carDistanceFare = carPerKm * distanceKm;
-  const carDurationFare = carPerMin * durationMin;
+  const carBaseFare = 17000;
+  const carPerKm = 2800;
+  const carPerMin = 400;
+
+  const carExtraKm = Math.max(0, distanceKm - 5);
+  const carExtraMin = Math.max(0, durationMin - 15);
+  const carDistanceFare = carPerKm * carExtraKm;
+  const carDurationFare = carPerMin * carExtraMin;
   const carRawTotal = carBaseFare + carDistanceFare + carDurationFare;
   const carFare = Math.ceil(carRawTotal / 1000) * 1000;
   const carRoundingAdjustment = carFare - carRawTotal;
   const carTotalFare = carFare + platformFee;
-  const carAppCommission = carFare * 0.175;
+  const carAppCommission = carFare * COMMISSION_RATE;
   const carDriverEarning = carFare - carAppCommission;
 
   // --- Motorcycle fare calculation ---
-  const motorBaseFare = 3000;
+  const motorBaseFare = 11000;
   const motorPerKm = 2000;
   const motorPerMin = 300;
-  const motorDistanceFare = motorPerKm * distanceKm;
-  const motorDurationFare = motorPerMin * durationMin;
+
+  const motorExtraKm = Math.max(0, distanceKm - 5);
+  const motorExtraMin = Math.max(0, durationMin - 15);
+  const motorDistanceFare = motorPerKm * motorExtraKm;
+  const motorDurationFare = motorPerMin * motorExtraMin;
   const motorRawTotal = motorBaseFare + motorDistanceFare + motorDurationFare;
   const motorFare = Math.ceil(motorRawTotal / 1000) * 1000;
   const motorRoundingAdjustment = motorFare - motorRawTotal;
   const motorTotalFare = motorFare + platformFee;
-  const motorAppCommission = motorFare * 0.175;
+  const motorAppCommission = motorFare * COMMISSION_RATE;
   const motorDriverEarning = motorFare - motorAppCommission;
 
   return {
@@ -72,10 +79,7 @@ export const calculateFare = async (
   try {
     const { distanceM, durationSec } = req.body;
 
-    if (
-      typeof distanceM !== "number" ||
-      typeof durationSec !== "number" 
-    ) {
+    if (typeof distanceM !== "number" || typeof durationSec !== "number") {
       res.status(400).json({
         status: 400,
         code: "INVALID_INPUT",
@@ -90,7 +94,7 @@ export const calculateFare = async (
       status: 200,
       code: "FARE_CALCULATED",
       message: "Fare and nearby drivers calculated successfully.",
-      data: fare
+      data: fare,
     });
   } catch (error: any) {
     console.error("Internal error:", error?.response?.data || error.message);
