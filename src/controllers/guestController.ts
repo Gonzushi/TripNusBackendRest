@@ -100,7 +100,22 @@ export const updateGuest = async (
     num_attendees_confirmed,
   } = req.body;
 
-  // Build dynamic update object only with defined values
+  // Fetch current guest to compare is_attending
+  const { data: currentGuest, error: fetchError } = await supabase2
+    .from("guests")
+    .select("is_attending")
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !currentGuest) {
+    res.status(404).json({
+      status: 404,
+      error: "NOT_FOUND",
+      message: "Guest not found.",
+    });
+    return;
+  }
+
   const updateData: Record<string, any> = {
     updated_at: new Date().toISOString(),
   };
@@ -117,10 +132,17 @@ export const updateGuest = async (
   if (invitation_link !== undefined)
     updateData.invitation_link = invitation_link;
   if (wedding_id !== undefined) updateData.wedding_id = wedding_id;
-  if (is_attending !== undefined && is_attending !== null) {
-    updateData.is_attending = is_attending;
-    updateData.rsvp_at = new Date().toISOString();
+
+  if (typeof is_attending !== "undefined") {
+    const newValue = is_attending === undefined ? null : is_attending;
+    updateData.is_attending = newValue;
+
+    // Only update rsvp_at if is_attending is not null AND has changed
+    if (newValue !== null && newValue !== currentGuest.is_attending) {
+      updateData.rsvp_at = new Date().toISOString();
+    }
   }
+
   if (tag !== undefined) updateData.tag = tag;
   if (num_attendees_confirmed !== undefined)
     updateData.num_attendees_confirmed = num_attendees_confirmed;
