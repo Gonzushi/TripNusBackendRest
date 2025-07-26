@@ -26,6 +26,7 @@ import transactionRoutes from "./routes/transactionRoutes";
 import reviewRoutes from "./routes/reviewRoutes";
 import driverBankAccountRoutes from "./routes/driverBankAccountRoute";
 import disbursementChannelRoutes from "./routes/disbursementChannelRoute";
+import guestRoutes from "./routes/guestRoutes";
 
 const app = express();
 export const redis = new Redis(redisConfig);
@@ -49,6 +50,7 @@ app.use("/transactions", authenticateUser, transactionRoutes);
 app.use("/reviews", authenticateUser, reviewRoutes);
 app.use("/driver-bank-accounts", authenticateUser, driverBankAccountRoutes);
 app.use("/disbursement-channels", authenticateUser, disbursementChannelRoutes);
+app.use("/guests", guestRoutes);
 
 // Swagger
 setupSwagger(app);
