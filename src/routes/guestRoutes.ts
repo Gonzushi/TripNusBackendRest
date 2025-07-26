@@ -59,6 +59,9 @@ const router = express.Router();
  *               is_attending:
  *                 type: boolean
  *                 example: true
+ *               tag:
+ *                 type: string
+ *                 example: Finna
  *     responses:
  *       201:
  *         description: Guest created successfully
@@ -178,6 +181,9 @@ router.post("/", createGuest);
  *               is_attending:
  *                 type: boolean
  *                 example: true
+ *               tag:
+ *                 type: string
+ *                 example: Finna
  *     responses:
  *       200:
  *         description: Guest updated successfully

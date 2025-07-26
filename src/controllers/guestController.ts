@@ -18,6 +18,7 @@ export const createGuest = async (
     invitation_link = null,
     wedding_id = "931d5a18-9bce-40ab-9717-6a117766ff44",
     is_attending = null,
+    tag = null,
   } = req.body;
 
   // Validate that nickname is provided
@@ -44,6 +45,7 @@ export const createGuest = async (
       wedding_id,
       is_attending,
       rsvp_at: is_attending !== null ? new Date().toISOString() : null,
+      tag,
     },
   ]);
 
@@ -92,6 +94,7 @@ export const updateGuest = async (
     invitation_link,
     wedding_id,
     is_attending,
+    tag,
   } = req.body;
 
   // Build dynamic update object only with defined values
@@ -115,6 +118,8 @@ export const updateGuest = async (
     updateData.is_attending = is_attending;
     updateData.rsvp_at = new Date().toISOString();
   }
+  if (tag !== undefined) updateData.tag = tag;
+
 
   const { data, error } = await supabase2
     .from("guests")
