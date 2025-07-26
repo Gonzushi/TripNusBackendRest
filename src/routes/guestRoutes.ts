@@ -3,6 +3,7 @@ import {
   createGuest,
   updateGuest,
   deleteGuest,
+  getGuests,
 } from "../controllers/guestController";
 
 const router = express.Router();
@@ -193,5 +194,57 @@ router.patch("/:id", updateGuest);
  *         description: Internal server error
  */
 router.delete("/:id", deleteGuest);
+
+/**
+ * @swagger
+ * /guests:
+ *   get:
+ *     summary: Retrieve a list of guests with optional search, pagination, and sorting
+ *     tags: [Guests]
+ *     parameters:
+ *       - in: query
+ *         name: wedding_id
+ *         schema:
+ *           type: string
+ *           default: 931d5a18-9bce-40ab-9717-6a117766ff44
+ *         required: true
+ *         description: Filter guests by wedding ID
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Search by nickname or full name
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Max number of guests to return
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of guests to skip
+ *       - in: query
+ *         name: sort_by
+ *         schema:
+ *           type: string
+ *           enum: [nickname, full_name, created_at]
+ *         description: Field to sort by
+ *       - in: query
+ *         name: order
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Sort direction
+ *     responses:
+ *       200:
+ *         description: A list of guests
+ *       500:
+ *         description: Failed to fetch guests
+ */
+router.get("/", getGuests);
 
 export default router;

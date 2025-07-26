@@ -170,3 +170,66 @@ export const deleteGuest = async (
     data,
   });
 };
+
+// Get method
+export const getGuests = async (req: Request, res: Response): Promise<void> => {
+  const {
+    sort_by = "created_at",
+    order = "desc",
+    limit = 50,
+    offset = 0,
+    search = "",
+    wedding_id,
+  } = req.query;
+
+  if (!wedding_id || typeof wedding_id !== "string") {
+    res.status(400).json({
+      status: 400,
+      error: "MISSING_WEDDING_ID",
+      message: "wedding_id is required to fetch guests.",
+    });
+    return;
+  }
+
+  let query = supabase2
+    .from("guests")
+    .select("*", { count: "exact" })
+    .eq("wedding_id", wedding_id);
+
+  // Search filter
+  if (search && typeof search === "string") {
+    query = query.or(
+      `nickname.ilike.%${search}%,full_name.ilike.%${search}%,phone_number.ilike.%${search}%`
+    );
+  }
+
+  // Sorting
+  if (typeof sort_by === "string" && typeof order === "string") {
+    query = query.order(sort_by, {
+      ascending: order.toLowerCase() === "asc",
+    });
+  }
+
+  // Pagination
+  const rangeFrom = Number(offset);
+  const rangeTo = rangeFrom + Number(limit) - 1;
+  query = query.range(rangeFrom, rangeTo);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    res.status(500).json({
+      status: 500,
+      error: "FETCH_FAILED",
+      message: error.message,
+    });
+    return;
+  }
+
+  res.status(200).json({
+    status: 200,
+    message: "Guests fetched successfully",
+    count,
+    data,
+  });
+};
