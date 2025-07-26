@@ -117,7 +117,7 @@ export const updateGuest = async (
   if (invitation_link !== undefined)
     updateData.invitation_link = invitation_link;
   if (wedding_id !== undefined) updateData.wedding_id = wedding_id;
-  if (Object.prototype.hasOwnProperty.call(req.body, "is_attending")) {
+  if (is_attending !== undefined && is_attending !== null) {
     updateData.is_attending = is_attending;
     updateData.rsvp_at = new Date().toISOString();
   }
