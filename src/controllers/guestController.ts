@@ -269,3 +269,41 @@ export const getGuests = async (req: Request, res: Response): Promise<void> => {
     data,
   });
 };
+
+// Get using ID
+export const getGuestById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { id } = req.params;
+
+  if (!id || typeof id !== "string") {
+    res.status(400).json({
+      status: 400,
+      error: "MISSING_ID",
+      message: "Guest ID is required.",
+    });
+    return;
+  }
+
+  const { data, error } = await supabase2
+    .from("guests")
+    .select("*")
+    .eq("id", id)
+    .single(); // fetch exactly one row
+
+  if (error) {
+    res.status(500).json({
+      status: 500,
+      error: "FETCH_FAILED",
+      message: error.message,
+    });
+    return;
+  }
+
+  res.status(200).json({
+    status: 200,
+    message: "Guest fetched successfully",
+    data,
+  });
+};

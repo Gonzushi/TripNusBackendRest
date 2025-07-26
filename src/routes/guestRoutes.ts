@@ -4,6 +4,7 @@ import {
   updateGuest,
   deleteGuest,
   getGuests,
+  getGuestById,
 } from "../controllers/guestController";
 
 const router = express.Router();
@@ -319,5 +320,43 @@ router.delete("/:id", deleteGuest);
  *         description: Failed to fetch guests
  */
 router.get("/", getGuests);
+
+/**
+ * @swagger
+ * /guests/{id}:
+ *   get:
+ *     summary: Retrieve a guest by ID
+ *     tags: [Guests]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: a1b2c3d4-e5f6-7890-abcd-1234567890ef
+ *         description: Unique ID of the guest to retrieve
+ *     responses:
+ *       200:
+ *         description: Guest retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Guest fetched successfully
+ *                 data:
+ *                   $ref: '#/components/schemas/Guest'
+ *       400:
+ *         description: Missing or invalid guest ID
+ *       500:
+ *         description: Failed to fetch guest
+ */
+router.get("/:id", getGuestById);
+
 
 export default router;
