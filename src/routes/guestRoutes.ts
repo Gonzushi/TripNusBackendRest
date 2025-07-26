@@ -43,8 +43,10 @@ const router = express.Router();
  *                 type: string
  *                 example: Congratulations and best wishes!
  *               additional_names:
- *                 type: string
- *                 example: Jane Doe, Jim Doe
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Jane Doe", "Jim Doe"]
  *               num_attendees:
  *                 type: integer
  *                 example: 3
@@ -142,33 +144,98 @@ router.post("/", createGuest);
  *             properties:
  *               full_name:
  *                 type: string
+ *                 example: Johnathan Doe
  *               nickname:
  *                 type: string
+ *                 example: JohnDoe88
  *               phone_number:
  *                 type: string
+ *                 example: +6281234567890
  *               address:
  *                 type: string
+ *                 example: Jalan Mawar No. 88, Jakarta
  *               photo_url:
  *                 type: string
+ *                 format: uri
+ *                 example: https://example.com/uploads/guest-photo.jpg
  *               wish:
  *                 type: string
+ *                 example: Congratulations and best wishes!
  *               additional_names:
- *                 type: string
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Jane Doe", "Jim Doe"]
  *               num_attendees:
  *                 type: integer
+ *                 example: 3
  *               invitation_link:
  *                 type: string
+ *                 example: https://yourdomain.com/invite/johndoe88
  *               wedding_id:
  *                 type: string
+ *                 example: 931d5a18-9bce-40ab-9717-6a117766ff44
  *               is_attending:
  *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
  *         description: Guest updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Guest updated successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: d3f3b018-4cd5-487e-a5fb-123456789abc
+ *                     nickname:
+ *                       type: string
+ *                       example: JohnDoe88
+ *                     is_attending:
+ *                       type: boolean
+ *                       example: true
  *       400:
  *         description: ID not provided or invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: VALIDATION_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: Invalid guest ID or input
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: UPDATE_FAILED
+ *                 message:
+ *                   type: string
+ *                   example: Failed to update guest in database.
  */
 router.patch("/:id", updateGuest);
 
