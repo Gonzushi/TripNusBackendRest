@@ -20,6 +20,7 @@ export const createGuest = async (
     is_attending = null,
     tag = null,
     num_attendees_confirmed = null,
+    attendance_confirmed = null,
   } = req.body;
 
   // Validate that nickname is provided
@@ -48,6 +49,7 @@ export const createGuest = async (
       rsvp_at: is_attending !== null ? new Date().toISOString() : null,
       tag,
       num_attendees_confirmed,
+      attendance_confirmed,
     },
   ]);
 
@@ -98,6 +100,7 @@ export const updateGuest = async (
     is_attending,
     tag,
     num_attendees_confirmed,
+    attendance_confirmed,
   } = req.body;
 
   // Fetch current guest to compare is_attending
@@ -146,6 +149,8 @@ export const updateGuest = async (
   if (tag !== undefined) updateData.tag = tag;
   if (num_attendees_confirmed !== undefined)
     updateData.num_attendees_confirmed = num_attendees_confirmed;
+  if (attendance_confirmed !== undefined)
+    updateData.attendance_confirmed = attendance_confirmed;
 
   const { data, error } = await supabase2
     .from("guests")
