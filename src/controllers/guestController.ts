@@ -221,6 +221,7 @@ export const getGuests = async (req: Request, res: Response): Promise<void> => {
     offset = 0,
     search = "",
     wedding_id,
+    invited_by, // ✅ New filter
   } = req.query;
 
   if (!wedding_id || typeof wedding_id !== "string") {
@@ -237,21 +238,26 @@ export const getGuests = async (req: Request, res: Response): Promise<void> => {
     .select("*", { count: "exact" })
     .eq("wedding_id", wedding_id);
 
-  // Search filter
+  // 🔍 Search filter
   if (search && typeof search === "string") {
     query = query.or(
       `nickname.ilike.%${search}%,full_name.ilike.%${search}%,phone_number.ilike.%${search}%`
     );
   }
 
-  // Sorting
+  // ✅ Filter by invited_by (case-insensitive exact match)
+  if (invited_by && typeof invited_by === "string") {
+    query = query.ilike("invited_by", invited_by);
+  }
+
+  // ↕ Sorting
   if (typeof sort_by === "string" && typeof order === "string") {
     query = query.order(sort_by, {
       ascending: order.toLowerCase() === "asc",
     });
   }
 
-  // Pagination
+  // 📄 Pagination
   const rangeFrom = Number(offset);
   const rangeTo = rangeFrom + Number(limit) - 1;
   query = query.range(rangeFrom, rangeTo);
