@@ -159,7 +159,6 @@ export const updateGuest = async (
     updateData.attendance_confirmed = attendance_confirmed;
   if (invited_by !== undefined) updateData.invited_by = invited_by;
   if (notes !== undefined) updateData.notes = notes;
-  // Halo
 
   const { data, error } = await supabase2
     .from("guests")
