@@ -22,6 +22,7 @@ export const createGuest = async (
     num_attendees_confirmed = null,
     attendance_confirmed = null,
     invited_by = null,
+    notes = null,
   } = req.body;
 
   // Validate that nickname is provided
@@ -52,6 +53,7 @@ export const createGuest = async (
       num_attendees_confirmed,
       attendance_confirmed,
       invited_by,
+      notes,
     },
   ]);
 
@@ -104,6 +106,7 @@ export const updateGuest = async (
     num_attendees_confirmed,
     attendance_confirmed,
     invited_by,
+    notes,
   } = req.body;
 
   // Fetch current guest to compare is_attending
@@ -154,8 +157,8 @@ export const updateGuest = async (
     updateData.num_attendees_confirmed = num_attendees_confirmed;
   if (attendance_confirmed !== undefined)
     updateData.attendance_confirmed = attendance_confirmed;
-  if (invited_by !== undefined)
-    updateData.invited_by = invited_by;
+  if (invited_by !== undefined) updateData.invited_by = invited_by;
+  if (notes !== undefined) updateData.notes = notes;
 
   const { data, error } = await supabase2
     .from("guests")
