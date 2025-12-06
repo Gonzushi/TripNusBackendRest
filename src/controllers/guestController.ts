@@ -321,3 +321,68 @@ export const getGuestById = async (
     data,
   });
 };
+
+// Get all wishes, but put the specified guest's wish at the top
+export const getWishById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { id } = req.params;
+
+  if (!id || typeof id !== "string") {
+    res.status(400).json({
+      status: 400,
+      error: "MISSING_ID",
+      message: "Guest ID is required.",
+    });
+    return;
+  }
+
+  // Fetch all guests (you can limit columns if you want)
+  const { data, error } = await supabase2.from("guests").select("*");
+
+  if (error) {
+    res.status(500).json({
+      status: 500,
+      error: "FETCH_FAILED",
+      message: error.message,
+    });
+    return;
+  }
+
+  if (!data) {
+    res.status(200).json({
+      status: 200,
+      message: "No wishes found",
+      data: [],
+    });
+    return;
+  }
+
+  // Keep only rows that actually have a wish (non-null, non-empty)
+  const guestsWithWish = data.filter(
+    (guest: any) => guest.wish && String(guest.wish).trim() !== ""
+  );
+
+  // Find the guest matching the given id
+  const indexOfTarget = guestsWithWish.findIndex(
+    (guest: any) => String(guest.id) === String(id)
+  );
+
+  let orderedWishes;
+
+  if (indexOfTarget >= 0) {
+    const target = guestsWithWish[indexOfTarget];
+    const rest = guestsWithWish.filter((_, i: number) => i !== indexOfTarget);
+    orderedWishes = [target, ...rest];
+  } else {
+    // If the id doesn't have a wish / doesn't exist, just return all wishes as-is
+    orderedWishes = guestsWithWish;
+  }
+
+  res.status(200).json({
+    status: 200,
+    message: "Wishes fetched successfully",
+    data: orderedWishes,
+  });
+};

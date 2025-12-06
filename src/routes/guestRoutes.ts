@@ -5,6 +5,7 @@ import {
   deleteGuest,
   getGuests,
   getGuestById,
+  getWishById,
 } from "../controllers/guestController";
 
 const router = express.Router();
@@ -358,5 +359,43 @@ router.get("/", getGuests);
  */
 router.get("/:id", getGuestById);
 
+/**
+ * @swagger
+ * /guests/{id}/wishes:
+ *   get:
+ *     summary: Retrieve all wishes, prioritizing a specific guest
+ *     tags: [Guests]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: a1b2c3d4-e5f6-7890-abcd-1234567890ef
+ *         description: ID of the guest whose wish should appear at the top
+ *     responses:
+ *       200:
+ *         description: Wishes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Wishes fetched successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Guest'
+ *       400:
+ *         description: Missing or invalid guest ID
+ *       500:
+ *         description: Failed to fetch wishes
+ */
+router.get("/:id/wishes", getWishById);
 
 export default router;
