@@ -6,6 +6,7 @@ import {
   getGuests,
   getGuestById,
   getWishById,
+  getGuestByTo,
 } from "../controllers/guestController";
 
 const router = express.Router();
@@ -321,6 +322,52 @@ router.delete("/:id", deleteGuest);
  *         description: Failed to fetch guests
  */
 router.get("/", getGuests);
+
+/**
+ * @swagger
+ * /guests/by-to:
+ *   get:
+ *     summary: Retrieve a guest by custom `to` slug (case-insensitive match against full_name)
+ *     tags: [Guests]
+ *     parameters:
+ *       - in: query
+ *         name: to
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: hendry-widyanto-and-finna-widyanti
+ *         description: Custom "to" slug from invitation link. The API will parse the first person (before "-and-") and match against full_name (case-insensitive contains).
+ *       - in: query
+ *         name: wedding_id
+ *         required: false
+ *         schema:
+ *           type: string
+ *           default: 931d5a18-9bce-40ab-9717-6a117766ff44
+ *         description: Optional wedding_id scope for the lookup.
+ *     responses:
+ *       200:
+ *         description: Guest fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Guest fetched successfully
+ *                 data:
+ *                   $ref: '#/components/schemas/Guest'
+ *       400:
+ *         description: Missing or invalid `to` parameter
+ *       404:
+ *         description: Guest not found for the given `to`
+ *       500:
+ *         description: Failed to fetch guest
+ */
+router.get("/by-to", getGuestByTo);
 
 /**
  * @swagger

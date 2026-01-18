@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { supabase2 } from "../supabaseClient";
 
+const DEFAULT_WEDDING_ID = "931d5a18-9bce-40ab-9717-6a117766ff44";
+
 // Create a new guest
 export const createGuest = async (
   req: Request,
@@ -384,5 +386,133 @@ export const getWishById = async (
     status: 200,
     message: "Wishes fetched successfully",
     data: orderedWishes,
+  });
+};
+
+/**
+ * Convert a slug chunk into a normalized search phrase:
+ * - "hendry-widyanto" -> "hendry widyanto"
+ * - "hendry-widyanto-and-finna-widyanti" -> "hendry widyanto"
+ * We intentionally keep it lowercase for consistency.
+ */
+function extractFirstPersonSearchPhrase(toRaw: string): string {
+  const cleaned = String(toRaw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/%20/g, " ")
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-");
+
+  // Take first person chunk before "-and-"
+  const firstChunk = cleaned.split("-and-")[0] || "";
+
+  // hyphen -> space, collapse spaces
+  const phrase = firstChunk.replace(/-/g, " ").replace(/\s+/g, " ").trim();
+
+  return phrase;
+}
+
+export const getGuestByTo = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { to, wedding_id } = req.query;
+
+  if (!to || typeof to !== "string") {
+    res.status(400).json({
+      status: 400,
+      error: "MISSING_TO",
+      message: "`to` query param is required.",
+    });
+    return;
+  }
+
+  const phrase = extractFirstPersonSearchPhrase(to);
+
+  if (!phrase) {
+    res.status(400).json({
+      status: 400,
+      error: "INVALID_TO",
+      message: "Could not parse `to` into a searchable phrase.",
+    });
+    return;
+  }
+
+  const weddingId =
+    typeof wedding_id === "string" && wedding_id.trim()
+      ? wedding_id.trim()
+      : DEFAULT_WEDDING_ID;
+
+  /**
+   * Primary: full_name contains phrase (case-insensitive)
+   * Fallback: nickname contains first token (case-insensitive)
+   *
+   * Note: `ilike` is case-insensitive in Postgres.
+   */
+
+  // 1) full_name contains "hendry widyanto" in any casing
+  const { data: byFullName, error: err1 } = await supabase2
+    .from("guests")
+    .select("*")
+    .eq("wedding_id", weddingId)
+    .ilike("full_name", `%${phrase}%`)
+    // deterministic: you can change ordering preference
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (err1) {
+    res.status(500).json({
+      status: 500,
+      error: "FETCH_FAILED",
+      message: err1.message,
+    });
+    return;
+  }
+
+  if (byFullName && byFullName.length > 0) {
+    res.status(200).json({
+      status: 200,
+      message: "Guest fetched successfully",
+      data: byFullName[0],
+      meta: { matched_on: "full_name_contains", phrase },
+    });
+    return;
+  }
+
+  // 2) fallback: nickname contains first token, e.g. "hendry"
+  const firstToken = phrase.split(" ").filter(Boolean)[0] || phrase;
+
+  const { data: byNick, error: err2 } = await supabase2
+    .from("guests")
+    .select("*")
+    .eq("wedding_id", weddingId)
+    .ilike("nickname", `%${firstToken}%`)
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (err2) {
+    res.status(500).json({
+      status: 500,
+      error: "FETCH_FAILED",
+      message: err2.message,
+    });
+    return;
+  }
+
+  if (byNick && byNick.length > 0) {
+    res.status(200).json({
+      status: 200,
+      message: "Guest fetched successfully",
+      data: byNick[0],
+      meta: { matched_on: "nickname_contains", phrase, token: firstToken },
+    });
+    return;
+  }
+
+  res.status(404).json({
+    status: 404,
+    error: "NOT_FOUND",
+    message: `Guest not found for phrase '${phrase}'.`,
+    meta: { phrase },
   });
 };
