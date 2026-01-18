@@ -37,27 +37,50 @@ export const createGuest = async (
     return;
   }
 
-  const { data, error } = await supabase2.from("guests").insert([
-    {
-      nickname,
-      full_name,
-      phone_number,
-      address,
-      photo_url,
-      wish,
-      additional_names,
-      num_attendees,
-      invitation_link,
-      wedding_id,
-      is_attending,
-      rsvp_at: is_attending !== null ? new Date().toISOString() : null,
-      tag,
-      num_attendees_confirmed,
-      attendance_confirmed,
-      invited_by,
-      notes,
-    },
-  ]);
+  // Normalize additional_names:
+  // - allow null
+  // - allow string[] (preferred)
+  // - allow single string -> wrap as [string]
+  let normalizedAdditionalNames: string[] | null = null;
+  if (Array.isArray(additional_names)) {
+    normalizedAdditionalNames = additional_names
+      .map((x) => String(x).trim())
+      .filter((x) => x.length > 0);
+    if (normalizedAdditionalNames.length === 0)
+      normalizedAdditionalNames = null;
+  } else if (typeof additional_names === "string") {
+    const v = additional_names.trim();
+    normalizedAdditionalNames = v ? [v] : null;
+  } else {
+    normalizedAdditionalNames = null;
+  }
+
+  const payload = {
+    nickname,
+    full_name,
+    phone_number,
+    address,
+    photo_url,
+    wish,
+    additional_names: normalizedAdditionalNames,
+    num_attendees,
+    invitation_link,
+    wedding_id,
+    is_attending,
+    rsvp_at: is_attending !== null ? new Date().toISOString() : null,
+    tag,
+    num_attendees_confirmed,
+    attendance_confirmed,
+    invited_by,
+    notes,
+  };
+
+  // ✅ Return inserted row as a single object (not array)
+  const { data, error } = await supabase2
+    .from("guests")
+    .insert([payload])
+    .select("*")
+    .single();
 
   if (error) {
     console.log(error);
@@ -72,7 +95,7 @@ export const createGuest = async (
   res.status(201).json({
     status: 201,
     message: "Guest created successfully",
-    data,
+    data, // ✅ now an object containing id, etc.
   });
 };
 

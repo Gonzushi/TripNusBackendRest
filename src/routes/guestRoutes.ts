@@ -80,19 +80,25 @@ const router = express.Router();
  *                   type: string
  *                   example: Guest created successfully
  *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: d3f3b018-4cd5-487e-a5fb-123456789abc
+ *                     nickname:
+ *                       type: string
+ *                       example: JohnDoe88
+ *                     full_name:
+ *                       type: string
+ *                       example: Johnathan Doe
+ *                     additional_names:
+ *                       type: array
+ *                       items:
  *                         type: string
- *                         example: d3f3b018-4cd5-487e-a5fb-123456789abc
- *                       nickname:
- *                         type: string
- *                         example: JohnDoe88
- *                       is_attending:
- *                         type: boolean
- *                         example: true
+ *                       example: ["Jane Doe", "Jim Doe"]
+ *                     is_attending:
+ *                       type: boolean
+ *                       example: true
  *       400:
  *         description: Missing or invalid fields
  *         content:
@@ -108,7 +114,7 @@ const router = express.Router();
  *                   example: VALIDATION_ERROR
  *                 message:
  *                   type: string
- *                   example: nickname is required.
+ *                   example: nickname or wedding_id is required.
  *       500:
  *         description: Server error while creating guest
  *         content:
