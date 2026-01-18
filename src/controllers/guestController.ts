@@ -413,16 +413,28 @@ export const getWishById = async (
 };
 
 /**
- * Convert a slug chunk into a normalized search phrase:
- * - "hendry-widyanto" -> "hendry widyanto"
- * - "hendry-widyanto-and-finna-widyanti" -> "hendry widyanto"
- * We intentionally keep it lowercase for consistency.
+ * Extract first person's name from `to` slug.
+ * Example:
+ *   "hendry-widyanto-and-finna-widyanti" -> "hendry widyanto"
+ *   "adrian" -> "adrian"
+ *
+ * Notes:
+ * - decodeURIComponent handles %20 and other encodings
+ * - underscores normalized to hyphens
+ * - "-and-" is the separator for the second person
  */
 function extractFirstPersonSearchPhrase(toRaw: string): string {
-  const cleaned = String(toRaw || "")
+  const decoded = (() => {
+    try {
+      return decodeURIComponent(String(toRaw || ""));
+    } catch {
+      return String(toRaw || "");
+    }
+  })();
+
+  const cleaned = decoded
     .trim()
     .toLowerCase()
-    .replace(/%20/g, " ")
     .replace(/_/g, "-")
     .replace(/\s+/g, "-");
 
@@ -435,6 +447,10 @@ function extractFirstPersonSearchPhrase(toRaw: string): string {
   return phrase;
 }
 
+/**
+ * GET /guests/by-to?to=hendry-widyanto-and-finna-widyanti&wedding_id=...
+ * Exact match (case-insensitive) against full_name for the first person phrase.
+ */
 export const getGuestByTo = async (
   req: Request,
   res: Response
@@ -467,67 +483,36 @@ export const getGuestByTo = async (
       : DEFAULT_WEDDING_ID;
 
   /**
-   * Primary: full_name contains phrase (case-insensitive)
-   * Fallback: nickname contains first token (case-insensitive)
-   *
-   * Note: `ilike` is case-insensitive in Postgres.
+   * Exact match (case-insensitive).
+   * Postgres `ilike` without %...% is an exact match ignoring case.
    */
-
-  // 1) full_name contains "hendry widyanto" in any casing
-  const { data: byFullName, error: err1 } = await supabase2
+  const { data, error } = await supabase2
     .from("guests")
     .select("*")
     .eq("wedding_id", weddingId)
-    .ilike("full_name", `%${phrase}%`)
-    // deterministic: you can change ordering preference
-    .order("created_at", { ascending: true })
+    .ilike("full_name", phrase) // ✅ exact, case-insensitive
+    .order("created_at", { ascending: true }) // if duplicates exist, pick earliest
     .limit(1);
 
-  if (err1) {
+  if (error) {
     res.status(500).json({
       status: 500,
       error: "FETCH_FAILED",
-      message: err1.message,
+      message: error.message,
     });
     return;
   }
 
-  if (byFullName && byFullName.length > 0) {
+  if (data && data.length > 0) {
     res.status(200).json({
       status: 200,
       message: "Guest fetched successfully",
-      data: byFullName[0],
-      meta: { matched_on: "full_name_contains", phrase },
-    });
-    return;
-  }
-
-  // 2) fallback: nickname contains first token, e.g. "hendry"
-  const firstToken = phrase.split(" ").filter(Boolean)[0] || phrase;
-
-  const { data: byNick, error: err2 } = await supabase2
-    .from("guests")
-    .select("*")
-    .eq("wedding_id", weddingId)
-    .ilike("nickname", `%${firstToken}%`)
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  if (err2) {
-    res.status(500).json({
-      status: 500,
-      error: "FETCH_FAILED",
-      message: err2.message,
-    });
-    return;
-  }
-
-  if (byNick && byNick.length > 0) {
-    res.status(200).json({
-      status: 200,
-      message: "Guest fetched successfully",
-      data: byNick[0],
-      meta: { matched_on: "nickname_contains", phrase, token: firstToken },
+      data: data[0],
+      meta: {
+        matched_on: "full_name_exact_ilike",
+        phrase,
+        wedding_id: weddingId,
+      },
     });
     return;
   }
@@ -535,7 +520,7 @@ export const getGuestByTo = async (
   res.status(404).json({
     status: 404,
     error: "NOT_FOUND",
-    message: `Guest not found for phrase '${phrase}'.`,
-    meta: { phrase },
+    message: `Guest not found for exact name '${phrase}'.`,
+    meta: { phrase, wedding_id: weddingId },
   });
 };
