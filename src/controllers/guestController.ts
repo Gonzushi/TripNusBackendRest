@@ -524,3 +524,136 @@ export const getGuestByTo = async (
     meta: { phrase, wedding_id: weddingId },
   });
 };
+
+// Event Tracker
+function getClientIp(req: Request): string | null {
+  // Typical reverse proxy header. May contain a list: "ip, ip, ip"
+  const xff = req.headers["x-forwarded-for"];
+  if (typeof xff === "string" && xff.trim()) {
+    return xff.split(",")[0].trim();
+  }
+  // Some platforms use these:
+  const realIp = req.headers["x-real-ip"];
+  if (typeof realIp === "string" && realIp.trim()) return realIp.trim();
+
+  // Fallback (may be undefined depending on setup)
+  // @ts-ignore
+  return req.socket?.remoteAddress ?? null;
+}
+
+function pickCoarseLocationFromHeaders(req: Request) {
+  // These depend on your hosting/CDN. Keep best-effort.
+  const cfCountry = req.headers["cf-ipcountry"];
+  const vercelCountry = req.headers["x-vercel-ip-country"];
+  const flyCountry = req.headers["fly-client-ip"]; // not country; example only
+
+  const country =
+    (typeof cfCountry === "string" && cfCountry) ||
+    (typeof vercelCountry === "string" && vercelCountry) ||
+    null;
+
+  // City/region are rarely provided unless you have special headers/services.
+  return country ? { country } : null;
+}
+
+// POST /invitation-view-events
+export const createInvitationViewEvent = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const {
+    wedding_id,
+    invitee_id, // client name
+    data = {},
+    seen_at, // optional override; default to now()
+  } = req.body || {};
+
+  if (!wedding_id || typeof wedding_id !== "string" || !invitee_id || typeof invitee_id !== "string") {
+    res.status(400).json({
+      status: 400,
+      error: "VALIDATION_ERROR",
+      message: "wedding_id and invitee_id are required.",
+    });
+    return;
+  }
+
+  // Fetch guest snapshot (recommended) to avoid trusting client for names.
+  const { data: guest, error: guestErr } = await supabase2
+    .from("guests")
+    .select("id, wedding_id, full_name, additional_names")
+    .eq("id", invitee_id)
+    .single();
+
+  if (guestErr || !guest) {
+    res.status(404).json({
+      status: 404,
+      error: "GUEST_NOT_FOUND",
+      message: "Invitee not found.",
+    });
+    return;
+  }
+
+  // Ensure guest belongs to the wedding_id (important integrity check)
+  if (String(guest.wedding_id) !== String(wedding_id)) {
+    res.status(400).json({
+      status: 400,
+      error: "WEDDING_MISMATCH",
+      message: "Invitee does not belong to the provided wedding_id.",
+    });
+    return;
+  }
+
+  const ip = getClientIp(req);
+  const userAgent = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null;
+  const referrer =
+    typeof req.headers["referer"] === "string"
+      ? req.headers["referer"]
+      : typeof req.headers["referrer"] === "string"
+      ? req.headers["referrer"]
+      : null;
+
+  const coarseLocation = pickCoarseLocationFromHeaders(req);
+
+  // Normalize `data` to an object
+  const safeData =
+    data && typeof data === "object" && !Array.isArray(data) ? data : {};
+
+  // Merge in server-derived fields (kept inside data as requested)
+  const mergedData = {
+    ...safeData,
+    location: safeData.location ?? coarseLocation, // do not overwrite if client already provides
+    ua: safeData.ua ?? userAgent,
+    referrer: safeData.referrer ?? referrer,
+    ip: safeData.ip ?? ip, // if you prefer not to store IP, remove this line
+  };
+
+  const payload = {
+    wedding_id,
+    guest_id: invitee_id,
+    invitee_full_name: guest.full_name ?? null,
+    invitee_additional_names: guest.additional_names ?? null,
+    seen_at: seen_at ? new Date(seen_at).toISOString() : new Date().toISOString(),
+    data: mergedData,
+  };
+
+  const { data: inserted, error } = await supabase2
+    .from("invitation_view_events")
+    .insert([payload])
+    .select("*")
+    .single();
+
+  if (error) {
+    res.status(500).json({
+      status: 500,
+      error: "CREATE_FAILED",
+      message: error.message,
+    });
+    return;
+  }
+
+  res.status(201).json({
+    status: 201,
+    message: "Invitation view event created successfully",
+    data: inserted,
+  });
+};

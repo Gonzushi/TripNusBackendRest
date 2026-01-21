@@ -7,6 +7,7 @@ import {
   getGuestById,
   getWishById,
   getGuestByTo,
+  createInvitationViewEvent
 } from "../controllers/guestController";
 
 const router = express.Router();
@@ -450,5 +451,147 @@ router.get("/:id", getGuestById);
  *         description: Failed to fetch wishes
  */
 router.get("/:id/wishes", getWishById);
+
+/**
+ * @swagger
+ * /invitation-view-events:
+ *   post:
+ *     summary: Track an invitation "open/view" event
+ *     description: Creates a new view event row so you can know which guest has seen the invitation. Stores metadata in `data` (jsonb), including optional coarse location derived from headers.
+ *     tags: [Invitation View Events]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - wedding_id
+ *               - invitee_id
+ *             properties:
+ *               wedding_id:
+ *                 type: string
+ *                 format: uuid
+ *                 example: 931d5a18-9bce-40ab-9717-6a117766ff44
+ *               invitee_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Guest ID (public.guests.id)
+ *                 example: d3f3b018-4cd5-487e-a5fb-123456789abc
+ *               seen_at:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional override; if omitted server sets current time.
+ *                 example: 2026-01-21T02:15:30.000Z
+ *               data:
+ *                 type: object
+ *                 description: Arbitrary metadata stored as jsonb (path, utm, screen, timezone, coarse location, etc.)
+ *                 example:
+ *                   path: "/?to=hendry-widyanto"
+ *                   utm:
+ *                     source: "whatsapp"
+ *                   screen:
+ *                     w: 393
+ *                     h: 852
+ *                   tz: "Asia/Jakarta"
+ *     responses:
+ *       201:
+ *         description: Invitation view event created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: Invitation view event created successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: 7e2b2a6a-9f86-4dd8-9b6b-2c3e4f5a6b7c
+ *                     wedding_id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: 931d5a18-9bce-40ab-9717-6a117766ff44
+ *                     guest_id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: d3f3b018-4cd5-487e-a5fb-123456789abc
+ *                     invitee_full_name:
+ *                       type: string
+ *                       example: Hendry Widyanto
+ *                     invitee_additional_names:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["Finna Widyanti"]
+ *                     seen_at:
+ *                       type: string
+ *                       format: date-time
+ *                       example: 2026-01-21T02:15:30.000Z
+ *                     data:
+ *                       type: object
+ *                       example:
+ *                         path: "/?to=hendry-widyanto"
+ *                         ua: "Mozilla/5.0 ..."
+ *                         referrer: "https://wa.me/..."
+ *                         location:
+ *                           country: "ID"
+ *       400:
+ *         description: Missing or invalid fields (or wedding mismatch)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: VALIDATION_ERROR
+ *                 message:
+ *                   type: string
+ *                   example: wedding_id and invitee_id are required.
+ *       404:
+ *         description: Guest not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 404
+ *                 error:
+ *                   type: string
+ *                   example: GUEST_NOT_FOUND
+ *                 message:
+ *                   type: string
+ *                   example: Invitee not found.
+ *       500:
+ *         description: Server error while creating invitation view event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: CREATE_FAILED
+ *                 message:
+ *                   type: string
+ *                   example: Failed to insert invitation view event into database.
+ */
+router.post("/", createInvitationViewEvent);
 
 export default router;
