@@ -592,6 +592,6 @@ router.get("/:id/wishes", getWishById);
  *                   type: string
  *                   example: Failed to insert invitation view event into database.
  */
-router.post("/", createInvitationViewEvent);
+router.post("/invitation-view-events", createInvitationViewEvent);
 
 export default router;
