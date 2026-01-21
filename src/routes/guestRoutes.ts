@@ -458,7 +458,7 @@ router.get("/:id/wishes", getWishById);
  *   post:
  *     summary: Track an invitation "open/view" event
  *     description: Creates a new view event row so you can know which guest has seen the invitation. Stores metadata in `data` (jsonb), including optional coarse location derived from headers.
- *     tags: [Invitation View Events]
+ *     tags: [Guests Tracker]
  *     requestBody:
  *       required: true
  *       content:
