@@ -454,7 +454,7 @@ router.get("/:id/wishes", getWishById);
 
 /**
  * @swagger
- * /invitation-view-events:
+ * /guests/invitation-view-events:
  *   post:
  *     summary: Track an invitation "open/view" event
  *     description: Creates a new view event row so you can know which guest has seen the invitation. Stores metadata in `data` (jsonb), including optional coarse location derived from headers.
