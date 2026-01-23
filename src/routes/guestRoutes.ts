@@ -7,7 +7,8 @@ import {
   getGuestById,
   getWishById,
   getGuestByTo,
-  createInvitationViewEvent
+  createInvitationViewEvent,
+  getInvitationViewSummary
 } from "../controllers/guestController";
 
 const router = express.Router();
@@ -375,6 +376,145 @@ router.get("/", getGuests);
  *         description: Failed to fetch guest
  */
 router.get("/by-to", getGuestByTo);
+
+/**
+ * @swagger
+ * /guests/invitation-view-events/summary:
+ *   get:
+ *     summary: Retrieve last viewed/opened timestamps per guest
+ *     description: >
+ *       Returns one row per guest for the given wedding_id, including:
+ *       (1) last_viewed_at = max(seen_at) where data.event = "page_view"
+ *       (2) last_opened_at = max(seen_at) where data.event = "opened"
+ *       Also formats invitee_additional_names (jsonb array) into a comma-separated string.
+ *     tags: [Guests Tracker]
+ *     parameters:
+ *       - in: query
+ *         name: wedding_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *           example: 931d5a18-9bce-40ab-9717-6a117766ff44
+ *         description: Wedding ID scope for the summary.
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: hendry
+ *         description: Case-insensitive contains match on invitee_full_name.
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 200
+ *           example: 200
+ *         description: Max number of event rows to scan per request (aggregation happens in-memory).
+ *       - in: query
+ *         name: offset
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *           example: 0
+ *         description: Event-row offset for pagination (note this paginates underlying events, not guests).
+ *     responses:
+ *       200:
+ *         description: Invitation view summary fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Invitation view summary fetched successfully
+ *                 count:
+ *                   type: integer
+ *                   example: 2
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       guest_id:
+ *                         type: string
+ *                         format: uuid
+ *                         example: d3f3b018-4cd5-487e-a5fb-123456789abc
+ *                       invitee_full_name:
+ *                         type: string
+ *                         nullable: true
+ *                         example: Hendry Widyanto
+ *                       invitee_additional_names:
+ *                         type: string
+ *                         nullable: true
+ *                         example: Finna Widyanti, Haryanto Kartawijaya
+ *                       last_viewed_at:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                         example: 2026-01-21T02:15:30.000Z
+ *                       last_opened_at:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                         example: 2026-01-21T02:16:10.000Z
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     wedding_id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: 931d5a18-9bce-40ab-9717-6a117766ff44
+ *                     limit:
+ *                       type: integer
+ *                       example: 200
+ *                     offset:
+ *                       type: integer
+ *                       example: 0
+ *                     search:
+ *                       type: string
+ *                       example: ""
+ *       400:
+ *         description: Missing wedding_id
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 400
+ *                 error:
+ *                   type: string
+ *                   example: MISSING_WEDDING_ID
+ *                 message:
+ *                   type: string
+ *                   example: wedding_id is required.
+ *       500:
+ *         description: Server error while fetching summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 500
+ *                 error:
+ *                   type: string
+ *                   example: FETCH_FAILED
+ *                 message:
+ *                   type: string
+ *                   example: Failed to fetch invitation view events.
+ */
+router.get("/invitation-view-events/summary", getInvitationViewSummary);
+
 
 /**
  * @swagger

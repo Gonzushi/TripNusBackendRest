@@ -657,3 +657,177 @@ export const createInvitationViewEvent = async (
     data: inserted,
   });
 };
+
+// GET /invitation-view-events/summary?wedding_id=...&limit=100&offset=0&search=...
+export const getInvitationViewSummary = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const {
+    wedding_id,
+    limit = 200,
+    offset = 0,
+    search = "",
+  } = req.query;
+
+  if (!wedding_id || typeof wedding_id !== "string") {
+    res.status(400).json({
+      status: 400,
+      error: "MISSING_WEDDING_ID",
+      message: "wedding_id is required.",
+    });
+    return;
+  }
+
+  const limitNum = Math.min(Math.max(Number(limit) || 200, 1), 1000);
+  const offsetNum = Math.max(Number(offset) || 0, 0);
+
+  // Helper: convert jsonb array -> "a, b, c"
+  const formatAdditionalNames = (v: any): string | null => {
+    if (!v) return null;
+
+    // Supabase may return jsonb array as JS array already
+    if (Array.isArray(v)) {
+      const cleaned = v.map((x) => String(x).trim()).filter(Boolean);
+      return cleaned.length ? cleaned.join(", ") : null;
+    }
+
+    // Or it might come as object/string in some edge cases
+    try {
+      const parsed = typeof v === "string" ? JSON.parse(v) : v;
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.map((x) => String(x).trim()).filter(Boolean);
+        return cleaned.length ? cleaned.join(", ") : null;
+      }
+    } catch {
+      // ignore
+    }
+
+    return null;
+  };
+
+  /**
+   * NOTE:
+   * - data.event is inside jsonb. Supabase supports filtering json path via `data->>event`
+   *   using `.filter('data->>event','in','("page_view","opened")')`.
+   * - We page results by events; aggregation happens in-memory per response.
+   */
+  let query = supabase2
+    .from("invitation_view_events")
+    .select(
+      "guest_id, invitee_full_name, invitee_additional_names, seen_at, data"
+    )
+    .eq("wedding_id", wedding_id)
+    .filter("data->>event", "in", '("page_view","opened")')
+    .order("seen_at", { ascending: false });
+
+  // Optional search by full name (case-insensitive)
+  if (search && typeof search === "string" && search.trim()) {
+    query = query.ilike("invitee_full_name", `%${search.trim()}%`);
+  }
+
+  // Pagination
+  query = query.range(offsetNum, offsetNum + limitNum - 1);
+
+  const { data: rows, error } = await query;
+
+  if (error) {
+    res.status(500).json({
+      status: 500,
+      error: "FETCH_FAILED",
+      message: error.message,
+    });
+    return;
+  }
+
+  // Aggregate to one row per guest_id
+  type OutRow = {
+    guest_id: string;
+    invitee_full_name: string | null;
+    invitee_additional_names: string | null; // joined string
+    last_viewed_at: string | null;
+    last_opened_at: string | null;
+  };
+
+  const byGuest = new Map<string, OutRow>();
+
+  const toIso = (d: any): string | null => {
+    if (!d) return null;
+    const t = new Date(d);
+    return isNaN(t.getTime()) ? null : t.toISOString();
+  };
+
+  const maxIso = (a: string | null, b: string | null): string | null => {
+    if (!a) return b;
+    if (!b) return a;
+    return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+  };
+
+  for (const r of rows || []) {
+    const guestId = String((r as any).guest_id || "");
+    if (!guestId) continue;
+
+    const fullName =
+      (r as any).invitee_full_name !== undefined
+        ? (r as any).invitee_full_name
+        : null;
+
+    const additionalJoined = formatAdditionalNames(
+      (r as any).invitee_additional_names
+    );
+
+    const seenAtIso = toIso((r as any).seen_at);
+
+    const eventType =
+      (r as any)?.data && typeof (r as any).data === "object"
+        ? String((r as any).data.event || "")
+        : "";
+
+    const existing =
+      byGuest.get(guestId) ||
+      ({
+        guest_id: guestId,
+        invitee_full_name: fullName ?? null,
+        invitee_additional_names: additionalJoined,
+        last_viewed_at: null,
+        last_opened_at: null,
+      } as OutRow);
+
+    // Keep a stable name snapshot (prefer non-null)
+    if (!existing.invitee_full_name && fullName) existing.invitee_full_name = fullName;
+    if (!existing.invitee_additional_names && additionalJoined)
+      existing.invitee_additional_names = additionalJoined;
+
+    if (eventType === "page_view") {
+      existing.last_viewed_at = maxIso(existing.last_viewed_at, seenAtIso);
+    } else if (eventType === "opened") {
+      existing.last_opened_at = maxIso(existing.last_opened_at, seenAtIso);
+    }
+
+    byGuest.set(guestId, existing);
+  }
+
+  // Sort by last_opened_at desc, then last_viewed_at desc
+  const result = Array.from(byGuest.values()).sort((a, b) => {
+    const ao = a.last_opened_at ? new Date(a.last_opened_at).getTime() : -1;
+    const bo = b.last_opened_at ? new Date(b.last_opened_at).getTime() : -1;
+    if (bo !== ao) return bo - ao;
+
+    const av = a.last_viewed_at ? new Date(a.last_viewed_at).getTime() : -1;
+    const bv = b.last_viewed_at ? new Date(b.last_viewed_at).getTime() : -1;
+    return bv - av;
+  });
+
+  res.status(200).json({
+    status: 200,
+    message: "Invitation view summary fetched successfully",
+    count: result.length,
+    data: result,
+    meta: {
+      wedding_id,
+      limit: limitNum,
+      offset: offsetNum,
+      search: typeof search === "string" ? search : "",
+    },
+  });
+};
